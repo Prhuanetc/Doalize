@@ -5,8 +5,8 @@ import {
   Text,
   TouchableOpacity,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
+  StatusBar,
   Platform,
 } from 'react-native';
 
@@ -28,10 +28,11 @@ export default function WelcomeScreen() {
 
   const {
     theme,
+    darkMode,
   } = useTheme();
 
   /*
-   * ABRIR A TELA DE LOGIN
+   * ABRIR LOGIN
    */
   function handleOpenLogin() {
     navigation.navigate(
@@ -40,7 +41,7 @@ export default function WelcomeScreen() {
   }
 
   /*
-   * ABRIR A TELA DE CADASTRO
+   * ABRIR CADASTRO
    */
   function handleOpenRegister() {
     navigation.navigate(
@@ -58,80 +59,84 @@ export default function WelcomeScreen() {
         },
       ]}
     >
-      <ScrollView
-        showsVerticalScrollIndicator={
-          false
+      <StatusBar
+        barStyle={
+          darkMode
+            ? 'light-content'
+            : 'dark-content'
         }
-        bounces={false}
-        contentContainerStyle={
-          styles.scrollContent
+        backgroundColor={
+          theme.background
+        }
+      />
+
+      {/* CONTEÚDO PRINCIPAL */}
+      <View
+        style={
+          styles.content
         }
       >
-        {/* LOGO E IDENTIDADE */}
+        {/* MARCA */}
         <View
           style={
-            styles.logoContainer
+            styles.brandContainer
           }
         >
           <View
             style={[
-              styles.logoIconContainer,
+              styles.logoSymbol,
               {
                 backgroundColor:
-                  `${theme.primary}18`,
+                  darkMode
+                    ? 'rgba(91, 141, 239, 0.16)'
+                    : 'rgba(37, 99, 235, 0.10)',
+
+                borderColor:
+                  darkMode
+                    ? 'rgba(108, 153, 241, 0.28)'
+                    : 'rgba(37, 99, 235, 0.16)',
               },
             ]}
           >
-            <Ionicons
-              name="heart"
-              size={58}
-              color={
-                theme.primary
-              }
-            />
+            <View
+              style={[
+                styles.logoHeartBackground,
+                {
+                  backgroundColor:
+                    theme.primary,
+                },
+              ]}
+            >
+              <Ionicons
+                name="heart"
+                size={38}
+                color="#ffffff"
+              />
+            </View>
           </View>
 
           <Text
             style={[
-              styles.logo,
-              {
-                color:
-                  theme.primary,
-              },
-            ]}
-          >
-            DOALIZE
-          </Text>
-
-          <Text
-            style={[
-              styles.subtitle,
-              {
-                color:
-                  theme.textSecondary,
-              },
-            ]}
-          >
-            Conectando pessoas para ajudar.
-          </Text>
-        </View>
-
-        {/* APRESENTAÇÃO */}
-        <View
-          style={
-            styles.presentationContainer
-          }
-        >
-          <Text
-            style={[
-              styles.title,
+              styles.logoText,
               {
                 color:
                   theme.text,
               },
             ]}
           >
-            Faça parte dessa rede solidária
+            Doalize
+          </Text>
+
+          <Text
+            style={[
+              styles.welcomeText,
+              {
+                color:
+                  theme.textSecondary,
+              },
+            ]}
+          >
+            Seja bem-vindo
           </Text>
 
           <Text
@@ -143,37 +148,34 @@ export default function WelcomeScreen() {
               },
             ]}
           >
-            Entre na sua conta ou cadastre-se para divulgar campanhas, encontrar pessoas e contribuir com causas solidárias.
+            Conectando pessoas a causas solidárias.
           </Text>
         </View>
 
         {/* BOTÕES */}
         <View
           style={
-            styles.buttonsContainer
+            styles.actionsContainer
           }
         >
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.82}
             onPress={
               handleOpenLogin
             }
             accessibilityRole="button"
-            accessibilityLabel="Entrar na minha conta"
+            accessibilityLabel="Entrar na conta"
             style={[
               styles.primaryButton,
               {
                 backgroundColor:
                   theme.primary,
+
+                shadowColor:
+                  theme.primary,
               },
             ]}
           >
-            <Ionicons
-              name="log-in-outline"
-              size={23}
-              color="#ffffff"
-            />
-
             <Text
               style={
                 styles.primaryButtonText
@@ -184,7 +186,7 @@ export default function WelcomeScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.82}
             onPress={
               handleOpenRegister
             }
@@ -194,21 +196,15 @@ export default function WelcomeScreen() {
               styles.secondaryButton,
               {
                 backgroundColor:
-                  theme.card,
+                  darkMode
+                    ? theme.card
+                    : '#ffffff',
 
                 borderColor:
                   theme.primary,
               },
             ]}
           >
-            <Ionicons
-              name="person-add-outline"
-              size={22}
-              color={
-                theme.primary
-              }
-            />
-
             <Text
               style={[
                 styles.secondaryButtonText,
@@ -221,27 +217,20 @@ export default function WelcomeScreen() {
               Cadastrar
             </Text>
           </TouchableOpacity>
-        </View>
 
-        {/* RODAPÉ */}
-        <View
-          style={
-            styles.footer
-          }
-        >
           <Text
             style={[
-              styles.footerText,
+              styles.legalText,
               {
                 color:
                   theme.textSecondary,
               },
             ]}
           >
-            Juntos, podemos transformar solidariedade em ação.
+            Ao criar uma conta, você poderá ler e aceitar os Termos de Uso e a Política de Privacidade.
           </Text>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -249,127 +238,131 @@ export default function WelcomeScreen() {
 const styles =
   StyleSheet.create({
     /*
-     * TELA PRINCIPAL
+     * TELA
      */
     container: {
       flex: 1,
     },
 
-    /*
-     * CONTEÚDO ROLÁVEL
-     *
-     * O flexGrow mantém o conteúdo
-     * centralizado em telas maiores.
-     *
-     * O paddingBottom evita sobreposição
-     * com a barra inferior do Android.
-     */
-    scrollContent: {
-      flexGrow: 1,
+    content: {
+      flex: 1,
 
       justifyContent:
-        'center',
+        'space-between',
 
-      paddingHorizontal: 24,
+      paddingHorizontal: 28,
 
       paddingTop:
         Platform.OS === 'android'
-          ? 34
-          : 24,
+          ? 58
+          : 42,
 
       paddingBottom:
         Platform.OS === 'android'
-          ? 46
-          : 30,
+          ? 38
+          : 28,
     },
 
     /*
-     * LOGO
+     * ÁREA DA MARCA
      */
-    logoContainer: {
-      width: '100%',
-
-      alignItems: 'center',
-    },
-
-    logoIconContainer: {
-      width: 104,
-
-      height: 104,
+    brandContainer: {
+      flex: 1,
 
       alignItems: 'center',
 
       justifyContent: 'center',
 
-      borderRadius: 52,
-
-      marginBottom: 20,
+      paddingBottom: 30,
     },
 
-    logo: {
-      fontSize: 42,
+    logoSymbol: {
+      width: 116,
 
-      fontWeight: '900',
-
-      letterSpacing: 1.5,
-
-      textAlign: 'center',
-    },
-
-    subtitle: {
-      marginTop: 8,
-
-      fontSize: 15,
-
-      lineHeight: 22,
-
-      textAlign: 'center',
-    },
-
-    /*
-     * APRESENTAÇÃO
-     */
-    presentationContainer: {
-      width: '100%',
+      height: 116,
 
       alignItems: 'center',
 
-      marginTop: 34,
+      justifyContent: 'center',
 
-      paddingHorizontal: 10,
+      marginBottom: 24,
+
+      borderWidth: 1,
+
+      borderRadius: 58,
     },
 
-    title: {
-      maxWidth: 310,
+    logoHeartBackground: {
+      width: 76,
 
-      fontSize: 24,
+      height: 76,
 
-      lineHeight: 31,
+      alignItems: 'center',
 
-      fontWeight: '800',
+      justifyContent: 'center',
+
+      borderRadius: 38,
+
+      shadowColor: '#2563eb',
+
+      shadowOffset: {
+        width: 0,
+
+        height: 9,
+      },
+
+      shadowOpacity: 0.24,
+
+      shadowRadius: 14,
+
+      elevation: 8,
+    },
+
+    logoText: {
+      fontSize: 43,
+
+      lineHeight: 52,
+
+      fontWeight: '900',
+
+      letterSpacing: 0.4,
+
+      textAlign: 'center',
+    },
+
+    welcomeText: {
+      marginTop: 12,
+
+      fontSize: 18,
+
+      lineHeight: 25,
+
+      fontWeight: '700',
 
       textAlign: 'center',
     },
 
     description: {
-      maxWidth: 330,
+      maxWidth: 290,
 
-      marginTop: 14,
+      marginTop: 8,
 
-      fontSize: 15,
+      fontSize: 14,
 
-      lineHeight: 23,
+      lineHeight: 21,
+
+      fontWeight: '400',
 
       textAlign: 'center',
     },
 
     /*
-     * BOTÕES
+     * AÇÕES
      */
-    buttonsContainer: {
+    actionsContainer: {
       width: '100%',
 
-      marginTop: 34,
+      alignItems: 'center',
     },
 
     primaryButton: {
@@ -377,33 +370,43 @@ const styles =
 
       minHeight: 56,
 
-      flexDirection: 'row',
-
       alignItems: 'center',
 
       justifyContent: 'center',
 
       paddingHorizontal: 20,
 
-      borderRadius: 16,
+      borderRadius: 28,
+
+      shadowOffset: {
+        width: 0,
+
+        height: 8,
+      },
+
+      shadowOpacity: 0.22,
+
+      shadowRadius: 12,
+
+      elevation: 7,
     },
 
     primaryButtonText: {
-      marginLeft: 9,
-
       color: '#ffffff',
 
-      fontSize: 16,
+      fontSize: 17,
+
+      lineHeight: 23,
 
       fontWeight: '800',
+
+      textAlign: 'center',
     },
 
     secondaryButton: {
       width: '100%',
 
       minHeight: 56,
-
-      flexDirection: 'row',
 
       alignItems: 'center',
 
@@ -415,41 +418,29 @@ const styles =
 
       borderWidth: 2,
 
-      borderRadius: 16,
+      borderRadius: 28,
     },
 
     secondaryButtonText: {
-      marginLeft: 9,
+      fontSize: 17,
 
-      fontSize: 16,
+      lineHeight: 23,
 
       fontWeight: '800',
+
+      textAlign: 'center',
     },
 
-    /*
-     * RODAPÉ
-     *
-     * Agora fica abaixo dos botões
-     * dentro do ScrollView, sem invadir
-     * o botão Cadastrar ou a barra
-     * de navegação do Android.
-     */
-    footer: {
-      width: '100%',
+    legalText: {
+      maxWidth: 310,
 
-      alignItems: 'center',
+      marginTop: 20,
 
-      marginTop: 26,
+      paddingHorizontal: 8,
 
-      paddingHorizontal: 16,
+      fontSize: 11,
 
-      paddingBottom: 8,
-    },
-
-    footerText: {
-      fontSize: 12,
-
-      lineHeight: 18,
+      lineHeight: 17,
 
       textAlign: 'center',
     },
