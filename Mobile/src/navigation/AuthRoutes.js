@@ -14,6 +14,8 @@ import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
 
 import ResetPasswordScreen from '../screens/Auth/ResetPasswordScreen';
 
+import TermsPrivacyScreen from '../screens/Auth/TermsPrivacyScreen.js';
+
 const Stack =
   createNativeStackNavigator();
 
@@ -52,6 +54,17 @@ export default function AuthRoutes() {
         component={
           RegisterScreen
         }
+      />
+
+      {/* TERMOS E PRIVACIDADE */}
+      <Stack.Screen
+        name="TermsPrivacyScreen"
+        component={
+          TermsPrivacyScreen
+        }
+        options={{
+          gestureEnabled: false,
+        }}
       />
 
       {/* SOLICITAR CÓDIGO */}

@@ -15,7 +15,8 @@ import {
 import sequelize from '../config/database.js';
 
 import User from '../models/User.js';
-
+import Chat from '../models/Chat.js';
+import Message from '../models/Message.js';
 import PasswordVerification from '../models/PasswordVerification.js';
 
 import {
@@ -45,18 +46,18 @@ const CODE_EXPIRATION_MINUTES = 10;
 const MIN_PASSWORD_LENGTH = 6;
 
 /*
- * TRANSFORMAR CAMINHO PÚBLICO
+ * TRANSFORMAR UM CAMINHO PÚBLICO
  * EM CAMINHO FÍSICO
  *
- * URLs externas não são removidas
- * por esta função.
+ * URLs externas não são removidas.
  */
 function getPhysicalUploadPath(
   publicPath
 ) {
   if (
     !publicPath ||
-    typeof publicPath !== 'string'
+    typeof publicPath !==
+      'string'
   ) {
     return null;
   }
@@ -124,10 +125,7 @@ function getPhysicalUploadPath(
 }
 
 /*
- * REMOVER UM ARQUIVO LOCAL
- *
- * Uma falha na remoção do arquivo
- * não desfaz a anonimização.
+ * REMOVER ARQUIVO LOCAL
  */
 async function removeUploadFile(
   publicPath
@@ -154,11 +152,6 @@ async function removeUploadFile(
     if (
       error.code === 'ENOENT'
     ) {
-      console.log(
-        'ARQUIVO JÁ NÃO EXISTIA:',
-        publicPath
-      );
-
       return;
     }
 
@@ -172,6 +165,88 @@ async function removeUploadFile(
       }
     );
   }
+}
+
+/*
+ * REMOVER UMA LISTA DE ARQUIVOS
+ *
+ * Caminhos repetidos são processados
+ * apenas uma vez.
+ */
+async function removeUploadFiles(
+  publicPaths
+) {
+  const uniquePaths = [
+    ...new Set(
+      publicPaths.filter(
+        (item) =>
+          typeof item ===
+            'string' &&
+          item.trim()
+      )
+    ),
+  ];
+
+  await Promise.allSettled(
+    uniquePaths.map(
+      (publicPath) =>
+        removeUploadFile(
+          publicPath
+        )
+    )
+  );
+}
+
+/*
+ * IDENTIFICAR UMA CONTA
+ * QUE JÁ FOI ANONIMIZADA
+ */
+function isAnonymousEmail(
+  email
+) {
+  return (
+    typeof email ===
+      'string' &&
+    /^conta-removida-\d+-[a-f0-9]+@doalize\.invalid$/i.test(
+      email
+    )
+  );
+}
+
+/*
+ * CRIAR E-MAIL INTERNO E ÚNICO
+ * PARA A CONTA ANONIMIZADA
+ */
+function createAnonymousEmail(
+  userId
+) {
+  const randomIdentifier =
+    crypto
+      .randomBytes(12)
+      .toString('hex');
+
+  return (
+    `conta-removida-${userId}-` +
+    `${randomIdentifier}@doalize.invalid`
+  );
+}
+
+/*
+ * CRIAR SENHA ALEATÓRIA
+ *
+ * O antigo usuário não conhece essa senha
+ * e não conseguirá entrar novamente.
+ */
+async function createAnonymousPassword() {
+  const randomPassword =
+    crypto
+      .randomBytes(48)
+      .toString('hex');
+
+  return bcrypt.hash(
+    randomPassword,
+    12
+  );
 }
 
 /*
@@ -249,8 +324,7 @@ async function createAndSendPasswordCode(
 }
 
 /*
- * VALIDAR OS CAMPOS UTILIZADOS
- * NA REDEFINIÇÃO DE SENHA
+ * VALIDAR CAMPOS DE SENHA
  */
 function validatePasswordFields({
   code,
@@ -324,7 +398,7 @@ function validatePasswordFields({
 
 /*
  * CONFIRMAR CÓDIGO E
- * ATUALIZAR SENHA
+ * ATUALIZAR A SENHA
  */
 async function changePasswordWithCode({
   user,
@@ -512,59 +586,6 @@ async function changePasswordWithCode({
     success:
       true,
   };
-}
-
-/*
- * IDENTIFICAR UMA CONTA
- * QUE JÁ FOI ANONIMIZADA
- *
- * O domínio .invalid é reservado
- * para endereços que não recebem
- * mensagens reais.
- */
-function isAnonymousEmail(
-  email
-) {
-  return (
-    typeof email === 'string' &&
-    /^conta-removida-\d+-[a-f0-9]+@doalize\.invalid$/i.test(
-      email
-    )
-  );
-}
-
-/*
- * CRIAR UM E-MAIL ÚNICO
- * PARA A CONTA ANONIMIZADA
- */
-function createAnonymousEmail(
-  userId
-) {
-  const randomIdentifier =
-    crypto
-      .randomBytes(12)
-      .toString('hex');
-
-  return (
-    `conta-removida-${userId}-` +
-    `${randomIdentifier}@doalize.invalid`
-  );
-}
-
-/*
- * CRIAR UMA SENHA ALEATÓRIA
- * QUE O ANTIGO USUÁRIO NÃO CONHECE
- */
-async function createAnonymousPassword() {
-  const randomPassword =
-    crypto
-      .randomBytes(48)
-      .toString('hex');
-
-  return bcrypt.hash(
-    randomPassword,
-    12
-  );
 }
 
 class UserController {
@@ -806,7 +827,7 @@ class UserController {
 
   /*
    * SOLICITAR CÓDIGO PELAS
-   * CONFIGURAÇÕES DA CONTA
+   * CONFIGURAÇÕES
    */
   async requestPasswordCode(
     req,
@@ -1006,10 +1027,6 @@ class UserController {
           },
         });
 
-      /*
-       * Resposta genérica para não revelar
-       * se o endereço possui uma conta.
-       */
       if (
         !user ||
         isAnonymousEmail(
@@ -1193,12 +1210,23 @@ class UserController {
    *
    * DELETE /users/delete
    *
-   * O registro do usuário, os posts,
-   * as mensagens e as conversas são
-   * preservados.
+   * PRESERVA:
    *
-   * Somente os dados pessoais e o
-   * acesso à conta são removidos.
+   * - registro anônimo do usuário;
+   * - publicações;
+   * - imagens das publicações;
+   * - promoções.
+   *
+   * REMOVE:
+   *
+   * - dados pessoais;
+   * - acesso à conta;
+   * - foto do perfil;
+   * - códigos de verificação;
+   * - mensagens enviadas;
+   * - mensagens recebidas;
+   * - imagens e áudios das mensagens;
+   * - conversas relacionadas.
    */
   async delete(
     req,
@@ -1207,7 +1235,7 @@ class UserController {
     const transaction =
       await sequelize.transaction();
 
-    let previousPhoto = null;
+    const filesToDelete = [];
 
     try {
       const userId =
@@ -1252,10 +1280,6 @@ class UserController {
           });
       }
 
-      /*
-       * Evita anonimizar novamente
-       * uma conta já processada.
-       */
       if (
         isAnonymousEmail(
           user.email
@@ -1271,9 +1295,137 @@ class UserController {
           });
       }
 
-      previousPhoto =
-        user.photo;
+      /*
+       * ARMAZENAR A FOTO DE PERFIL
+       * PARA SER APAGADA DEPOIS
+       */
+      if (user.photo) {
+        filesToDelete.push(
+          user.photo
+        );
+      }
 
+      /*
+       * BUSCAR TODAS AS MENSAGENS
+       * ENVIADAS OU RECEBIDAS
+       *
+       * Isso precisa acontecer antes da
+       * exclusão para recuperar imagens
+       * e áudios associados.
+       */
+      const userMessages =
+        await Message.findAll({
+          where: {
+            [Op.or]: [
+              {
+                sender_id:
+                  userId,
+              },
+
+              {
+                receiver_id:
+                  userId,
+              },
+            ],
+          },
+
+          attributes: [
+            'id',
+            'image',
+            'audio',
+          ],
+
+          transaction,
+        });
+
+      /*
+       * GUARDAR IMAGENS E ÁUDIOS
+       * DAS MENSAGENS
+       */
+      for (
+        const message of
+          userMessages
+      ) {
+        if (message.image) {
+          filesToDelete.push(
+            message.image
+          );
+        }
+
+        if (message.audio) {
+          filesToDelete.push(
+            message.audio
+          );
+        }
+      }
+
+      /*
+       * REMOVER CÓDIGOS DE ALTERAÇÃO
+       * E RECUPERAÇÃO DE SENHA
+       */
+      const removedVerifications =
+        await PasswordVerification.destroy({
+          where: {
+            user_id:
+              userId,
+          },
+
+          transaction,
+        });
+
+      /*
+       * REMOVER TODAS AS MENSAGENS
+       * ENVIADAS OU RECEBIDAS
+       */
+      const deletedMessages =
+        await Message.destroy({
+          where: {
+            [Op.or]: [
+              {
+                sender_id:
+                  userId,
+              },
+
+              {
+                receiver_id:
+                  userId,
+              },
+            ],
+          },
+
+          transaction,
+        });
+
+      /*
+       * REMOVER CONVERSAS RELACIONADAS
+       * AO USUÁRIO
+       *
+       * As mensagens são removidas antes
+       * das conversas para evitar problemas
+       * de chave estrangeira.
+       */
+      const deletedChats =
+        await Chat.destroy({
+          where: {
+            [Op.or]: [
+              {
+                user_one_id:
+                  userId,
+              },
+
+              {
+                user_two_id:
+                  userId,
+              },
+            ],
+          },
+
+          transaction,
+        });
+
+      /*
+       * GERAR CREDENCIAIS ANÔNIMAS
+       */
       const anonymousEmail =
         createAnonymousEmail(
           user.id
@@ -1283,25 +1435,10 @@ class UserController {
         await createAnonymousPassword();
 
       /*
-       * Remove todos os códigos de
-       * alteração ou recuperação.
-       */
-      const removedVerifications =
-        await PasswordVerification.destroy({
-          where: {
-            user_id:
-              user.id,
-          },
-
-          transaction,
-        });
-
-      /*
-       * Substituir os dados pessoais.
+       * ANONIMIZAR O REGISTRO
        *
-       * O ID é preservado para manter
-       * os relacionamentos existentes
-       * com posts, mensagens e chats.
+       * O ID permanece igual para preservar
+       * publicações e promoções.
        */
       await user.update(
         {
@@ -1328,37 +1465,38 @@ class UserController {
         }
       );
 
+      /*
+       * CONFIRMAR TODAS AS ALTERAÇÕES
+       * NO BANCO
+       */
       await transaction.commit();
 
       /*
-       * A foto só é removida depois que
-       * o banco confirma a anonimização.
+       * REMOVER ARQUIVOS FÍSICOS
        *
-       * Fotos externas não são apagadas
-       * por esta função.
+       * Esta etapa acontece somente depois
+       * que o banco confirma a operação.
        */
-      if (previousPhoto) {
-        await removeUploadFile(
-          previousPhoto
-        );
-      }
+      await removeUploadFiles(
+        filesToDelete
+      );
 
       console.log(
         'CONTA ANONIMIZADA:',
         {
           userId:
-
             user.id,
 
           removedVerifications,
 
+          deletedMessages,
+
+          deletedChats,
+
           postsPreserved:
             true,
 
-          messagesPreserved:
-            true,
-
-          chatsPreserved:
+          promotionsPreserved:
             true,
         }
       );
@@ -1367,19 +1505,24 @@ class UserController {
         .status(200)
         .json({
           message:
-            'Conta anonimizada com sucesso.',
+            'Conta anonimizada e histórico de mensagens removido com sucesso.',
 
           anonymized:
             true,
+
+          removed: {
+            messages:
+              deletedMessages,
+
+            chats:
+              deletedChats,
+          },
 
           preserved: {
             posts:
               true,
 
-            messages:
-              true,
-
-            chats:
+            promotions:
               true,
           },
         });

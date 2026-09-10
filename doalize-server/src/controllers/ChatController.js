@@ -2,17 +2,16 @@ import {
   Op,
 } from 'sequelize';
 
+import sequelize from '../config/database.js';
+
+import Chat from '../models/Chat.js';
+
 import Message from '../models/Message.js';
 
 import User from '../models/User.js';
 
 /*
  * IDENTIFICAR CONTA ANONIMIZADA
- *
- * Quando uma conta é anonimizada,
- * o e-mail passa a utilizar o formato:
- *
- * conta-removida-ID-CODIGO@doalize.invalid
  */
 function isAnonymousEmail(
   email
@@ -26,77 +25,207 @@ function isAnonymousEmail(
 }
 
 /*
- * FORMATAR O USUÁRIO EXIBIDO
- * NAS CONVERSAS
- *
- * Conta ativa:
- * mantém nome e foto.
- *
- * Conta anonimizada:
- * apresenta somente "Usuário removido".
+ * VALIDAR IDENTIFICADOR
  */
-function formatConversationUser(
-  user,
-  fallbackUserId
+function isValidUserId(
+  userId
+) {
+  return (
+    Number.isInteger(
+      userId
+    ) &&
+    userId > 0
+  );
+}
+
+/*
+ * VERIFICAR SE UMA CONTA
+ * ESTÁ INDISPONÍVEL
+ */
+function isUnavailableUser(
+  user
 ) {
   if (!user) {
-    return {
-      id:
-        Number(
-          fallbackUserId
-        ),
-
-      name:
-        'Usuário removido',
-
-      photo:
-        null,
-
-      anonymized:
-        true,
-    };
+    return true;
   }
 
-  const accountIsAnonymous =
+  if (
     isAnonymousEmail(
       user.email
-    );
+    )
+  ) {
+    return true;
+  }
 
-  if (accountIsAnonymous) {
+  return (
+    typeof user.name ===
+      'string' &&
+    user.name.trim() ===
+      'Usuário removido'
+  );
+}
+
+/*
+ * CONDIÇÃO PARA BUSCAR MENSAGENS
+ * ENTRE DOIS USUÁRIOS
+ *
+ * Também funciona quando os dois IDs
+ * pertencem à mesma conta.
+ */
+function createMessagesBetweenUsersWhere(
+  firstUserId,
+  secondUserId
+) {
+  if (
+    Number(firstUserId) ===
+    Number(secondUserId)
+  ) {
     return {
-      id:
-        user.id,
+      sender_id:
+        firstUserId,
 
-      name:
-        'Usuário removido',
-
-      photo:
-        null,
-
-      anonymized:
-        true,
+      receiver_id:
+        secondUserId,
     };
   }
 
   return {
-    id:
-      user.id,
+    [Op.or]: [
+      {
+        sender_id:
+          firstUserId,
 
-    name:
-      user.name ||
-      'Usuário',
+        receiver_id:
+          secondUserId,
+      },
 
-    photo:
-      user.photo ||
-      null,
+      {
+        sender_id:
+          secondUserId,
 
-    anonymized:
-      false,
+        receiver_id:
+          firstUserId,
+      },
+    ],
   };
 }
 
 /*
- * FORMATAR A PRÉVIA DA
+ * CONDIÇÃO PARA BUSCAR CONVERSAS
+ * ENTRE DOIS USUÁRIOS
+ *
+ * Também funciona quando os dois IDs
+ * pertencem à mesma conta.
+ */
+function createChatsBetweenUsersWhere(
+  firstUserId,
+  secondUserId
+) {
+  if (
+    Number(firstUserId) ===
+    Number(secondUserId)
+  ) {
+    return {
+      user_one_id:
+        firstUserId,
+
+      user_two_id:
+        secondUserId,
+    };
+  }
+
+  return {
+    [Op.or]: [
+      {
+        user_one_id:
+          firstUserId,
+
+        user_two_id:
+          secondUserId,
+      },
+
+      {
+        user_one_id:
+          secondUserId,
+
+        user_two_id:
+          firstUserId,
+      },
+    ],
+  };
+}
+
+/*
+ * APAGAR HISTÓRICO COM UMA
+ * CONTA ANONIMIZADA
+ */
+async function removeConversationHistory(
+  currentUserId,
+  otherUserId
+) {
+  if (
+    !isValidUserId(
+      currentUserId
+    ) ||
+    !isValidUserId(
+      otherUserId
+    )
+  ) {
+    return {
+      deletedMessages:
+        0,
+
+      deletedChats:
+        0,
+    };
+  }
+
+  const transaction =
+    await sequelize.transaction();
+
+  try {
+    const deletedMessages =
+      await Message.destroy({
+        where:
+          createMessagesBetweenUsersWhere(
+            currentUserId,
+            otherUserId
+          ),
+
+        transaction,
+      });
+
+    const deletedChats =
+      await Chat.destroy({
+        where:
+          createChatsBetweenUsersWhere(
+            currentUserId,
+            otherUserId
+          ),
+
+        transaction,
+      });
+
+    await transaction.commit();
+
+    return {
+      deletedMessages,
+
+      deletedChats,
+    };
+  } catch (error) {
+    if (
+      !transaction.finished
+    ) {
+      await transaction.rollback();
+    }
+
+    throw error;
+  }
+}
+
+/*
+ * FORMATAR PRÉVIA DA
  * ÚLTIMA MENSAGEM
  */
 function getLastMessagePreview(
@@ -125,11 +254,7 @@ class ChatController {
   /*
    * LISTAR CONVERSAS
    *
-   * GET /chat/conversations
-   *
-   * As conversas com contas
-   * anonimizadas continuam visíveis,
-   * mas sem dados pessoais.
+   * GET /chat
    */
   async getConversations(
     req,
@@ -142,7 +267,7 @@ class ChatController {
         );
 
       if (
-        !Number.isInteger(
+        !isValidUserId(
           userId
         )
       ) {
@@ -154,14 +279,6 @@ class ChatController {
           });
       }
 
-      /*
-       * BUSCAR TODAS AS MENSAGENS
-       * DO USUÁRIO
-       *
-       * A ordenação decrescente garante
-       * que a primeira mensagem encontrada
-       * para cada contato seja a mais recente.
-       */
       const messages =
         await Message.findAll({
           where: {
@@ -188,39 +305,61 @@ class ChatController {
 
       const conversationsMap = {};
 
+      const blockedUserIds =
+        new Set();
+
       for (
-        const message
-        of messages
+        const savedMessage of
+          messages
       ) {
         const senderId =
           Number(
-            message.sender_id
+            savedMessage.sender_id
           );
 
         const receiverId =
           Number(
-            message.receiver_id
+            savedMessage.receiver_id
           );
 
-        const otherUserId =
-          senderId === userId
-            ? receiverId
-            : senderId;
+        /*
+         * MENSAGEM PARA SI MESMO
+         *
+         * Se remetente e destinatário forem
+         * a conta atual, o outro usuário será
+         * a própria conta.
+         */
+        let otherUserId;
 
         if (
-          !Number.isInteger(
+          senderId === userId &&
+          receiverId === userId
+        ) {
+          otherUserId =
+            userId;
+        } else {
+          otherUserId =
+            senderId === userId
+              ? receiverId
+              : senderId;
+        }
+
+        if (
+          !isValidUserId(
             otherUserId
           )
         ) {
           continue;
         }
 
-        /*
-         * Como as mensagens estão ordenadas
-         * da mais recente para a mais antiga,
-         * cada pessoa é registrada somente
-         * na primeira ocorrência.
-         */
+        if (
+          blockedUserIds.has(
+            otherUserId
+          )
+        ) {
+          continue;
+        }
+
         if (
           conversationsMap[
             otherUserId
@@ -242,50 +381,78 @@ class ChatController {
             }
           );
 
+        if (
+          isUnavailableUser(
+            otherUser
+          )
+        ) {
+          blockedUserIds.add(
+            otherUserId
+          );
+
+          await removeConversationHistory(
+            userId,
+            otherUserId
+          );
+
+          continue;
+        }
+
+        const lastMessage =
+          getLastMessagePreview(
+            savedMessage
+          );
+
+        const isOwnConversation =
+          otherUserId ===
+          userId;
+
         conversationsMap[
           otherUserId
         ] = {
           id:
             otherUserId,
 
-          user:
-            formatConversationUser(
-              otherUser,
-              otherUserId
-            ),
+          user: {
+            id:
+              otherUser.id,
 
-          lastMessage:
-            getLastMessagePreview(
-              message
-            ),
+            name:
+              isOwnConversation
+                ? `${otherUser.name} (você)`
+                : otherUser.name ||
+                  'Usuário',
+
+            photo:
+              otherUser.photo ||
+              null,
+
+            anonymized:
+              false,
+
+            isOwnAccount:
+              isOwnConversation,
+          },
+
+          lastMessage,
 
           lastMessageTime:
-            message.created_at,
+            savedMessage.created_at,
 
-          /*
-           * Mantém também os nomes
-           * alternativos para compatibilidade
-           * com diferentes telas do mobile.
-           */
           last_message:
-            getLastMessagePreview(
-              message
-            ),
+            lastMessage,
 
           last_message_time:
-            message.created_at,
+            savedMessage.created_at,
         };
       }
-
-      const conversations =
-        Object.values(
-          conversationsMap
-        );
 
       return res
         .status(200)
         .json(
-          conversations
+          Object.values(
+            conversationsMap
+          )
         );
     } catch (error) {
       console.error(
@@ -306,6 +473,9 @@ class ChatController {
           original:
             error.original
               ?.message,
+
+          stack:
+            error.stack,
         }
       );
 
@@ -323,9 +493,8 @@ class ChatController {
    *
    * GET /chat/messages/:receiverId
    *
-   * As mensagens antigas são preservadas,
-   * inclusive quando uma das contas foi
-   * anonimizada.
+   * Também permite carregar mensagens
+   * enviadas para a própria conta.
    */
   async getMessages(
     req,
@@ -343,7 +512,7 @@ class ChatController {
         );
 
       if (
-        !Number.isInteger(
+        !isValidUserId(
           userId
         )
       ) {
@@ -356,7 +525,7 @@ class ChatController {
       }
 
       if (
-        !Number.isInteger(
+        !isValidUserId(
           receiverId
         )
       ) {
@@ -368,27 +537,55 @@ class ChatController {
           });
       }
 
+      /*
+       * Não existe mais bloqueio quando:
+       *
+       * userId === receiverId
+       */
+
+      const receiver =
+        await User.findByPk(
+          receiverId,
+          {
+            attributes: [
+              'id',
+              'name',
+              'email',
+            ],
+          }
+        );
+
+      if (
+        isUnavailableUser(
+          receiver
+        )
+      ) {
+        await removeConversationHistory(
+          userId,
+          receiverId
+        );
+
+        return res
+          .status(410)
+          .json({
+            message:
+              'Esta conta foi removida e a conversa não está mais disponível.',
+
+            blocked:
+              true,
+
+            messages:
+              [],
+          });
+      }
+
       const messages =
         await Message.findAll({
-          where: {
-            [Op.or]: [
-              {
-                sender_id:
-                  userId,
-
-                receiver_id:
-                  receiverId,
-              },
-
-              {
-                sender_id:
-                  receiverId,
-
-                receiver_id:
-                  userId,
-              },
-            ],
-          },
+          where:
+            createMessagesBetweenUsersWhere(
+              userId,
+              receiverId
+            ),
 
           order: [
             [
@@ -426,6 +623,9 @@ class ChatController {
           original:
             error.original
               ?.message,
+
+          stack:
+            error.stack,
         }
       );
 
@@ -441,11 +641,10 @@ class ChatController {
   /*
    * ENVIAR MENSAGEM
    *
-   * POST /chat/messages
+   * POST /chat/send
    *
-   * Contas anonimizadas permanecem no
-   * histórico, mas não podem receber
-   * mensagens novas.
+   * O usuário pode enviar uma mensagem
+   * para a própria conta.
    */
   async sendMessage(
     req,
@@ -470,7 +669,7 @@ class ChatController {
         );
 
       if (
-        !Number.isInteger(
+        !isValidUserId(
           senderId
         )
       ) {
@@ -483,7 +682,7 @@ class ChatController {
       }
 
       if (
-        !Number.isInteger(
+        !isValidUserId(
           receiverId
         )
       ) {
@@ -495,17 +694,16 @@ class ChatController {
           });
       }
 
-      if (
-        senderId ===
-        receiverId
-      ) {
-        return res
-          .status(400)
-          .json({
-            message:
-              'Não é possível enviar uma mensagem para a própria conta.',
-          });
-      }
+      /*
+       * BLOQUEIO REMOVIDO
+       *
+       * Antes existia:
+       *
+       * if (senderId === receiverId)
+       *
+       * Agora a própria conta é aceita
+       * como destinatária.
+       */
 
       const normalizedMessage =
         typeof message ===
@@ -527,10 +725,6 @@ class ChatController {
           ? audio.trim()
           : null;
 
-      /*
-       * A mensagem precisa possuir
-       * texto, imagem ou áudio.
-       */
       if (
         !normalizedMessage &&
         !normalizedImage &&
@@ -544,53 +738,39 @@ class ChatController {
           });
       }
 
-      /*
-       * VERIFICAR O DESTINATÁRIO
-       */
       const receiver =
         await User.findByPk(
           receiverId,
           {
             attributes: [
               'id',
+              'name',
               'email',
             ],
           }
         );
 
-      if (!receiver) {
-        return res
-          .status(404)
-          .json({
-            message:
-              'Destinatário não encontrado.',
-          });
-      }
-
-      /*
-       * Uma conta anonimizada não possui
-       * mais acesso ao aplicativo.
-       *
-       * As mensagens antigas permanecem,
-       * mas novas mensagens não podem ser
-       * enviadas para essa conta.
-       */
       if (
-        isAnonymousEmail(
-          receiver.email
+        isUnavailableUser(
+          receiver
         )
       ) {
+        await removeConversationHistory(
+          senderId,
+          receiverId
+        );
+
         return res
           .status(410)
           .json({
             message:
-              'Esta conta foi removida e não pode receber novas mensagens.',
+              'Esta conta foi removida e não pode receber mensagens.',
+
+            blocked:
+              true,
           });
       }
 
-      /*
-       * CRIAR MENSAGEM
-       */
       const newMessage =
         await Message.create({
           sender_id:
@@ -638,6 +818,9 @@ class ChatController {
           original:
             error.original
               ?.message,
+
+          stack:
+            error.stack,
         }
       );
 

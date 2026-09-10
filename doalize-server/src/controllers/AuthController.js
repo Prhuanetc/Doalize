@@ -1,12 +1,6 @@
 import bcrypt from 'bcryptjs';
-
 import jwt from 'jsonwebtoken';
-
 import dotenv from 'dotenv';
-
-import {
-  Op,
-} from 'sequelize';
 
 import User from '../models/User.js';
 
@@ -18,12 +12,21 @@ const DEFAULT_USER_PHOTO =
   '/uploads/usuarioimage.png';
 
 /*
+ * VERSÕES VIGENTES
+ *
+ * Devem ser iguais às versões usadas em:
+ *
+ * Mobile/src/screens/Auth/RegisterScreen.js
+ * Mobile/src/screens/Auth/TermsPrivacyScreen.js
+ */
+const CURRENT_TERMS_VERSION =
+  '1.0';
+
+const CURRENT_PRIVACY_VERSION =
+  '1.0';
+
+/*
  * IDENTIFICAR CONTA ANONIMIZADA
- *
- * Quando uma conta é anonimizada,
- * o e-mail passa a utilizar o formato:
- *
- * conta-removida-ID-CODIGO@doalize.invalid
  */
 function isAnonymousEmail(
   email
@@ -37,7 +40,135 @@ function isAnonymousEmail(
 }
 
 /*
- * CRIAR TOKEN DO USUÁRIO
+ * VALIDAR FORMATO DO E-MAIL
+ */
+function isValidEmail(
+  email
+) {
+  if (
+    typeof email !== 'string'
+  ) {
+    return false;
+  }
+
+  const emailPattern =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  return emailPattern.test(
+    email
+  );
+}
+
+/*
+ * NORMALIZAR VERSÃO DE DOCUMENTO
+ */
+function normalizeVersion(
+  version
+) {
+  if (
+    typeof version !== 'string'
+  ) {
+    return '';
+  }
+
+  return version.trim();
+}
+
+/*
+ * VALIDAR ACEITE DOS DOCUMENTOS
+ */
+function validateDocumentsAcceptance({
+  termsAccepted,
+  termsVersion,
+  privacyVersion,
+}) {
+  if (
+    termsAccepted !== true
+  ) {
+    return {
+      valid:
+        false,
+
+      code:
+        'DOCUMENTS_NOT_ACCEPTED',
+
+      message:
+        'É necessário ler e aceitar os Termos de Uso e a Política de Privacidade para criar uma conta.',
+    };
+  }
+
+  const normalizedTermsVersion =
+    normalizeVersion(
+      termsVersion
+    );
+
+  const normalizedPrivacyVersion =
+    normalizeVersion(
+      privacyVersion
+    );
+
+  if (
+    !normalizedTermsVersion ||
+    !normalizedPrivacyVersion
+  ) {
+    return {
+      valid:
+        false,
+
+      code:
+        'DOCUMENT_VERSIONS_MISSING',
+
+      message:
+        'Não foi possível confirmar as versões dos documentos. Leia e aceite os documentos novamente.',
+    };
+  }
+
+  if (
+    normalizedTermsVersion !==
+    CURRENT_TERMS_VERSION
+  ) {
+    return {
+      valid:
+        false,
+
+      code:
+        'TERMS_VERSION_OUTDATED',
+
+      message:
+        'Os Termos de Uso foram atualizados. Leia e aceite a versão atual.',
+    };
+  }
+
+  if (
+    normalizedPrivacyVersion !==
+    CURRENT_PRIVACY_VERSION
+  ) {
+    return {
+      valid:
+        false,
+
+      code:
+        'PRIVACY_VERSION_OUTDATED',
+
+      message:
+        'A Política de Privacidade foi atualizada. Leia e aceite a versão atual.',
+    };
+  }
+
+  return {
+    valid:
+      true,
+
+    termsVersion:
+      normalizedTermsVersion,
+
+    privacyVersion:
+      normalizedPrivacyVersion,
+  };
+}
+
+/*
+ * CRIAR TOKEN JWT
  */
 function createUserToken(
   userId
@@ -65,11 +196,10 @@ function createUserToken(
 }
 
 /*
- * FORMATAR DADOS PÚBLICOS
- * DO USUÁRIO
+ * FORMATAR RESPOSTA PÚBLICA
  *
- * A senha nunca é devolvida
- * pela API.
+ * A senha e o e-mail anonimizado
+ * nunca são retornados por esta função.
  */
 function formatUserResponse(
   user
@@ -99,21 +229,6 @@ function formatUserResponse(
   };
 }
 
-/*
- * VALIDAR FORMATO BÁSICO
- * DO E-MAIL
- */
-function isValidEmail(
-  email
-) {
-  const emailPattern =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  return emailPattern.test(
-    email
-  );
-}
-
 class AuthController {
   /*
    * CADASTRAR USUÁRIO
@@ -129,25 +244,25 @@ class AuthController {
         name,
         email,
         password,
+        termsAccepted,
+        termsVersion,
+        privacyVersion,
       } = req.body;
 
       const normalizedName =
-        typeof name ===
-          'string'
+        typeof name === 'string'
           ? name.trim()
           : '';
 
       const normalizedEmail =
-        typeof email ===
-          'string'
+        typeof email === 'string'
           ? email
               .trim()
               .toLowerCase()
           : '';
 
       const normalizedPassword =
-        typeof password ===
-          'string'
+        typeof password === 'string'
           ? password
           : '';
 
@@ -168,13 +283,39 @@ class AuthController {
       }
 
       /*
-       * TAMANHO DO NOME
+       * VALIDAR ACEITE
+       *
+       * Essa validação acontece também
+       * no backend para que não seja
+       * possível contorná-la pelo mobile.
+       */
+      const acceptanceValidation =
+        validateDocumentsAcceptance({
+          termsAccepted,
+          termsVersion,
+          privacyVersion,
+        });
+
+      if (
+        !acceptanceValidation.valid
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              acceptanceValidation.message,
+
+            code:
+              acceptanceValidation.code,
+          });
+      }
+
+      /*
+       * VALIDAR NOME
        */
       if (
-        normalizedName.length <
-          2 ||
-        normalizedName.length >
-          120
+        normalizedName.length < 2 ||
+        normalizedName.length > 120
       ) {
         return res
           .status(400)
@@ -185,7 +326,7 @@ class AuthController {
       }
 
       /*
-       * FORMATO DO E-MAIL
+       * VALIDAR E-MAIL
        */
       if (
         !isValidEmail(
@@ -201,8 +342,8 @@ class AuthController {
       }
 
       /*
-       * IMPEDE O USO DO DOMÍNIO INTERNO
-       * RESERVADO PARA ANONIMIZAÇÃO.
+       * BLOQUEAR DOMÍNIO INTERNO
+       * DE ANONIMIZAÇÃO
        */
       if (
         normalizedEmail.endsWith(
@@ -218,7 +359,7 @@ class AuthController {
       }
 
       /*
-       * TAMANHO DA SENHA
+       * VALIDAR SENHA
        */
       if (
         normalizedPassword.length <
@@ -233,16 +374,13 @@ class AuthController {
       }
 
       /*
-       * VERIFICAR SE O E-MAIL
-       * JÁ ESTÁ CADASTRADO
+       * VERIFICAR E-MAIL DUPLICADO
        */
       const userExists =
         await User.findOne({
           where: {
-            email: {
-              [Op.eq]:
-                normalizedEmail,
-            },
+            email:
+              normalizedEmail,
           },
         });
 
@@ -263,6 +401,15 @@ class AuthController {
           normalizedPassword,
           10
         );
+
+      /*
+       * REGISTRAR O HORÁRIO OFICIAL
+       *
+       * Não utilizamos termsAcceptedAt
+       * enviado pelo celular.
+       */
+      const officialAcceptedAt =
+        new Date();
 
       /*
        * CRIAR USUÁRIO
@@ -286,6 +433,17 @@ class AuthController {
 
           location:
             null,
+
+          terms_accepted_at:
+            officialAcceptedAt,
+
+          terms_version:
+            acceptanceValidation
+              .termsVersion,
+
+          privacy_version:
+            acceptanceValidation
+              .privacyVersion,
         });
 
       /*
@@ -295,6 +453,23 @@ class AuthController {
         createUserToken(
           user.id
         );
+
+      console.log(
+        'USUÁRIO CADASTRADO COM ACEITE:',
+        {
+          userId:
+            user.id,
+
+          termsVersion:
+            user.terms_version,
+
+          privacyVersion:
+            user.privacy_version,
+
+          acceptedAt:
+            user.terms_accepted_at,
+        }
+      );
 
       return res
         .status(201)
@@ -308,6 +483,17 @@ class AuthController {
             formatUserResponse(
               user
             ),
+
+          acceptance: {
+            termsVersion:
+              user.terms_version,
+
+            privacyVersion:
+              user.privacy_version,
+
+            acceptedAt:
+              user.terms_accepted_at,
+          },
         });
     } catch (error) {
       console.error(
@@ -325,6 +511,9 @@ class AuthController {
           original:
             error.original
               ?.message,
+
+          stack:
+            error.stack,
         }
       );
 
@@ -344,7 +533,7 @@ class AuthController {
       }
 
       /*
-       * VALIDAÇÕES DO MODELO USER
+       * ERRO DE VALIDAÇÃO DO MODELO
        */
       if (
         error.name ===
@@ -357,6 +546,32 @@ class AuthController {
               error.errors?.[0]
                 ?.message ||
               'Os dados informados são inválidos.',
+          });
+      }
+
+      /*
+       * COLUNAS AINDA NÃO CRIADAS
+       */
+      if (
+        error.name ===
+          'SequelizeDatabaseError' &&
+        (
+          error.message?.includes(
+            'terms_accepted_at'
+          ) ||
+          error.message?.includes(
+            'terms_version'
+          ) ||
+          error.message?.includes(
+            'privacy_version'
+          )
+        )
+      ) {
+        return res
+          .status(500)
+          .json({
+            message:
+              'As colunas de aceite ainda não foram criadas no banco de dados. Reinicie o servidor para sincronizar as tabelas.',
           });
       }
 
@@ -388,16 +603,14 @@ class AuthController {
       } = req.body;
 
       const normalizedEmail =
-        typeof email ===
-          'string'
+        typeof email === 'string'
           ? email
               .trim()
               .toLowerCase()
           : '';
 
       const normalizedPassword =
-        typeof password ===
-          'string'
+        typeof password === 'string'
           ? password
           : '';
 
@@ -417,7 +630,7 @@ class AuthController {
       }
 
       /*
-       * FORMATO DO E-MAIL
+       * VALIDAR E-MAIL
        */
       if (
         !isValidEmail(
@@ -444,10 +657,10 @@ class AuthController {
         });
 
       /*
-       * MENSAGEM GENÉRICA
+       * RESPOSTA GENÉRICA
        *
-       * Não informa se o endereço
-       * realmente possui uma conta.
+       * Evita revelar se determinado
+       * endereço possui uma conta.
        */
       if (!user) {
         return res
@@ -460,10 +673,6 @@ class AuthController {
 
       /*
        * BLOQUEAR CONTA ANONIMIZADA
-       *
-       * Uma conta anonimizada não pode
-       * gerar novos tokens nem voltar
-       * a acessar o aplicativo.
        */
       if (
         isAnonymousEmail(
@@ -487,11 +696,7 @@ class AuthController {
       }
 
       /*
-       * VALIDAR SENHA
-       *
-       * Também funciona com senhas
-       * redefinidas pelo fluxo
-       * "Esqueci minha senha".
+       * COMPARAR SENHA
        */
       const passwordMatch =
         await bcrypt.compare(
@@ -545,6 +750,9 @@ class AuthController {
           original:
             error.original
               ?.message,
+
+          stack:
+            error.stack,
         }
       );
 
@@ -562,3 +770,5 @@ class AuthController {
 }
 
 export default new AuthController();
+
+
