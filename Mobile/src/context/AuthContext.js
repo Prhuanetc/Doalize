@@ -11,6 +11,20 @@ import api from '../services/api';
 export const AuthContext =
   createContext(null);
 
+const TOKEN_STORAGE_KEY =
+  '@doalize_token';
+
+const USER_STORAGE_KEY =
+  '@doalize_user';
+
+/*
+ * O desafio da verificação em duas
+ * etapas não é salvo permanentemente.
+ *
+ * Se o aplicativo for fechado durante
+ * a confirmação, será necessário fazer
+ * login novamente.
+ */
 export function AuthProvider({
   children,
 }) {
@@ -23,6 +37,51 @@ export function AuthProvider({
     loading,
     setLoading,
   ] = useState(true);
+
+  /*
+   * DADOS TEMPORÁRIOS DO LOGIN
+   * COM VERIFICAÇÃO EM DUAS ETAPAS
+   */
+  const [
+    twoFactorChallenge,
+    setTwoFactorChallenge,
+  ] = useState(null);
+
+  /*
+   * NORMALIZAR E-MAIL
+   */
+  function normalizeEmail(
+    email
+  ) {
+    if (
+      typeof email !==
+      'string'
+    ) {
+      return '';
+    }
+
+    return email
+      .trim()
+      .toLowerCase();
+  }
+
+  /*
+   * CONFIGURAR TOKEN NO AXIOS
+   */
+  function setApiAuthorization(
+    token
+  ) {
+    if (!token) {
+      delete api.defaults
+        .headers
+        .Authorization;
+
+      return;
+    }
+
+    api.defaults.headers.Authorization =
+      `Bearer ${token}`;
+  }
 
   /*
    * SALVAR USUÁRIO
@@ -39,7 +98,7 @@ export function AuthProvider({
     );
 
     await AsyncStorage.setItem(
-      '@doalize_user',
+      USER_STORAGE_KEY,
       JSON.stringify(
         userData
       )
@@ -47,39 +106,71 @@ export function AuthProvider({
   }
 
   /*
-   * ENCERRAR SESSÃO
+   * SALVAR SESSÃO COMPLETA
    *
-   * O usuário é removido do contexto
-   * imediatamente para desmontar o Feed
-   * e carregar as rotas de autenticação.
-   *
-   * Depois disso, token e usuário são
-   * removidos do armazenamento local.
+   * Só deve ser chamada quando existe
+   * um token JWT definitivo.
    */
-  async function signOut() {
-    /*
-     * ENCERRAR A SESSÃO VISUAL
-     * IMEDIATAMENTE
-     */
-    setUser(null);
+  async function saveSession({
+    token,
+    userData,
+  }) {
+    if (
+      !token ||
+      !userData
+    ) {
+      throw new Error(
+        'Os dados da sessão são inválidos.'
+      );
+    }
 
     /*
-     * REMOVER O TOKEN DO AXIOS
-     * IMEDIATAMENTE
+     * Configura primeiro o token para
+     * que as próximas requisições já
+     * sejam autenticadas.
      */
-    delete api.defaults
-      .headers
-      .Authorization;
+    setApiAuthorization(
+      token
+    );
 
+    /*
+     * Salvar os dois valores de forma
+     * conjunta reduz o risco de ficar
+     * apenas com parte da sessão.
+     */
+    await AsyncStorage.multiSet([
+      [
+        TOKEN_STORAGE_KEY,
+        token,
+      ],
+
+      [
+        USER_STORAGE_KEY,
+        JSON.stringify(
+          userData
+        ),
+      ],
+    ]);
+
+    setTwoFactorChallenge(
+      null
+    );
+
+    setUser(
+      userData
+    );
+  }
+
+  /*
+   * LIMPAR DADOS LOCAIS
+   * DA SESSÃO
+   */
+  async function clearStoredSession() {
     try {
       await AsyncStorage.multiRemove([
-        '@doalize_token',
-        '@doalize_user',
+        TOKEN_STORAGE_KEY,
+        USER_STORAGE_KEY,
       ]);
-
-      console.log(
-        'SESSÃO ENCERRADA COM SUCESSO.'
-      );
     } catch (error) {
       console.error(
         'ERRO AO LIMPAR SESSÃO LOCAL:',
@@ -90,14 +181,11 @@ export function AuthProvider({
       );
 
       /*
-       * TENTATIVA INDIVIDUAL DE LIMPEZA
-       *
-       * Mesmo que multiRemove falhe,
-       * tenta apagar cada item.
+       * TENTATIVAS INDIVIDUAIS
        */
       try {
         await AsyncStorage.removeItem(
-          '@doalize_token'
+          TOKEN_STORAGE_KEY
         );
       } catch (
         tokenError
@@ -110,7 +198,7 @@ export function AuthProvider({
 
       try {
         await AsyncStorage.removeItem(
-          '@doalize_user'
+          USER_STORAGE_KEY
         );
       } catch (
         userError
@@ -124,28 +212,98 @@ export function AuthProvider({
   }
 
   /*
+   * CANCELAR DESAFIO DE
+   * VERIFICAÇÃO EM DUAS ETAPAS
+   */
+  function cancelTwoFactorChallenge() {
+    setTwoFactorChallenge(
+      null
+    );
+  }
+
+  /*
+   * ENCERRAR SESSÃO
+   */
+  async function signOut() {
+    /*
+     * Desmonta imediatamente as rotas
+     * autenticadas.
+     */
+    setUser(null);
+
+    /*
+     * Remove qualquer desafio que
+     * ainda esteja em andamento.
+     */
+    setTwoFactorChallenge(
+      null
+    );
+
+    /*
+     * Remove imediatamente o token
+     * das próximas requisições.
+     */
+    setApiAuthorization(
+      null
+    );
+
+    await clearStoredSession();
+
+    console.log(
+      'SESSÃO ENCERRADA COM SUCESSO.'
+    );
+  }
+
+  /*
    * CARREGAR SESSÃO SALVA
    */
   async function loadUser() {
     try {
-      const token =
-        await AsyncStorage.getItem(
-          '@doalize_token'
+      const storedValues =
+        await AsyncStorage.multiGet([
+          TOKEN_STORAGE_KEY,
+          USER_STORAGE_KEY,
+        ]);
+
+      const storedSession =
+        Object.fromEntries(
+          storedValues
         );
+
+      const token =
+        storedSession[
+          TOKEN_STORAGE_KEY
+        ];
+
+      const savedUser =
+        storedSession[
+          USER_STORAGE_KEY
+        ];
 
       if (!token) {
         setUser(null);
 
-        delete api.defaults
-          .headers
-          .Authorization;
+        setApiAuthorization(
+          null
+        );
+
+        if (savedUser) {
+          await AsyncStorage.removeItem(
+            USER_STORAGE_KEY
+          );
+        }
 
         return;
       }
 
-      api.defaults.headers.Authorization =
-        `Bearer ${token}`;
+      setApiAuthorization(
+        token
+      );
 
+      /*
+       * O perfil do servidor é a fonte
+       * principal dos dados atuais.
+       */
       try {
         const response =
           await api.get(
@@ -160,20 +318,31 @@ export function AuthProvider({
       ) {
         console.log(
           'ERRO AO BUSCAR PERFIL:',
-          profileError.response
-            ?.data ||
-            profileError.message
+          {
+            message:
+              profileError.message,
+
+            status:
+              profileError.response
+                ?.status,
+
+            response:
+              profileError.response
+                ?.data,
+          }
         );
 
         /*
-         * TOKEN INVÁLIDO OU EXPIRADO
-         *
-         * Encerra completamente a sessão.
+         * TOKEN INVÁLIDO,
+         * EXPIRADO OU BLOQUEADO
          */
         if (
           profileError.response
             ?.status ===
-          401
+            401 ||
+          profileError.response
+            ?.status ===
+            403
         ) {
           await signOut();
 
@@ -181,15 +350,10 @@ export function AuthProvider({
         }
 
         /*
-         * Se o servidor estiver
+         * Caso o servidor esteja
          * temporariamente indisponível,
          * tenta utilizar o usuário salvo.
          */
-        const savedUser =
-          await AsyncStorage.getItem(
-            '@doalize_user'
-          );
-
         if (savedUser) {
           try {
             const parsedUser =
@@ -212,19 +376,26 @@ export function AuthProvider({
           }
         } else {
           setUser(null);
+
+          setApiAuthorization(
+            null
+          );
         }
       }
     } catch (error) {
       console.error(
-        'ERRO AO CARREGAR USUÁRIO:',
-        error
+        'ERRO AO CARREGAR SESSÃO:',
+        {
+          message:
+            error.message,
+        }
       );
 
       setUser(null);
 
-      delete api.defaults
-        .headers
-        .Authorization;
+      setApiAuthorization(
+        null
+      );
     } finally {
       setLoading(false);
     }
@@ -232,29 +403,134 @@ export function AuthProvider({
 
   /*
    * ENTRAR NA CONTA
+   *
+   * Quando a verificação em duas etapas
+   * estiver desativada, o servidor retorna:
+   *
+   * - token;
+   * - user.
+   *
+   * Quando estiver ativada, retorna:
+   *
+   * - requiresTwoFactor;
+   * - challengeToken.
    */
   async function signIn(
     email,
     password
   ) {
     try {
+      /*
+       * Impede que um token antigo seja
+       * enviado na requisição de login.
+       */
+      setApiAuthorization(
+        null
+      );
+
+      setTwoFactorChallenge(
+        null
+      );
+
+      const normalizedEmail =
+        normalizeEmail(
+          email
+        );
+
       const response =
         await api.post(
           '/auth/login',
           {
             email:
-              email
-                .trim()
-                .toLowerCase(),
+              normalizedEmail,
 
             password,
           }
         );
 
+      const responseData =
+        response.data ||
+        {};
+
+      /*
+       * LOGIN COM VERIFICAÇÃO
+       * EM DUAS ETAPAS
+       */
+      if (
+        responseData
+          .requiresTwoFactor ===
+        true
+      ) {
+        const challengeToken =
+          typeof responseData
+            .challengeToken ===
+            'string'
+            ? responseData
+                .challengeToken
+                .trim()
+            : '';
+
+        if (!challengeToken) {
+          return {
+            success:
+              false,
+
+            message:
+              'O servidor não retornou o identificador da verificação.',
+          };
+        }
+
+        const challengeData = {
+          challengeToken,
+
+          email:
+            normalizedEmail,
+
+          expiresInMinutes:
+            Number(
+              responseData
+                .expiresInMinutes ||
+                10
+            ),
+        };
+
+        /*
+         * Não salva token nem usuário.
+         * A sessão ainda não foi concluída.
+         */
+        setTwoFactorChallenge(
+          challengeData
+        );
+
+        return {
+          success:
+            true,
+
+          requiresTwoFactor:
+            true,
+
+          challengeToken,
+
+          email:
+            normalizedEmail,
+
+          expiresInMinutes:
+            challengeData
+              .expiresInMinutes,
+
+          message:
+            responseData.message ||
+            'Código enviado para o e-mail cadastrado.',
+        };
+      }
+
+      /*
+       * LOGIN COMUM
+       */
       const {
         token,
         user: loggedUser,
-      } = response.data;
+      } = responseData;
 
       if (
         !token ||
@@ -269,21 +545,19 @@ export function AuthProvider({
         };
       }
 
-      await AsyncStorage.setItem(
-        '@doalize_token',
-        token
-      );
+      await saveSession({
+        token,
 
-      api.defaults.headers.Authorization =
-        `Bearer ${token}`;
-
-      await saveUser(
-        loggedUser
-      );
+        userData:
+          loggedUser,
+      });
 
       return {
         success:
           true,
+
+        requiresTwoFactor:
+          false,
 
         user:
           loggedUser,
@@ -305,6 +579,10 @@ export function AuthProvider({
         }
       );
 
+      setTwoFactorChallenge(
+        null
+      );
+
       return {
         success:
           false,
@@ -319,14 +597,196 @@ export function AuthProvider({
   }
 
   /*
+   * CONFIRMAR O CÓDIGO
+   * DO LOGIN EM DUAS ETAPAS
+   */
+  async function confirmTwoFactorLogin(
+    code
+  ) {
+    try {
+      const normalizedCode =
+        String(
+          code || ''
+        )
+          .replace(
+            /\D/g,
+            ''
+          )
+          .slice(
+            0,
+            6
+          );
+
+      if (
+        !/^\d{6}$/.test(
+          normalizedCode
+        )
+      ) {
+        return {
+          success:
+            false,
+
+          message:
+            'Digite o código de verificação com 6 dígitos.',
+        };
+      }
+
+      const challengeToken =
+        twoFactorChallenge
+          ?.challengeToken;
+
+      if (!challengeToken) {
+        return {
+          success:
+            false,
+
+          challengeExpired:
+            true,
+
+          message:
+            'A solicitação de login não está mais disponível. Faça login novamente.',
+        };
+      }
+
+      /*
+       * Nenhum token JWT é enviado aqui.
+       * A confirmação utiliza somente
+       * o desafio temporário.
+       */
+      setApiAuthorization(
+        null
+      );
+
+      const response =
+        await api.post(
+          '/auth/two-factor/confirm',
+          {
+            challengeToken,
+
+            code:
+              normalizedCode,
+          }
+        );
+
+      const responseData =
+        response.data ||
+        {};
+
+      const {
+        token,
+        user: loggedUser,
+      } = responseData;
+
+      if (
+        !token ||
+        !loggedUser
+      ) {
+        return {
+          success:
+            false,
+
+          message:
+            'O servidor não retornou os dados completos da sessão.',
+        };
+      }
+
+      /*
+       * Somente agora o JWT definitivo
+       * é salvo.
+       */
+      await saveSession({
+        token,
+
+        userData:
+          loggedUser,
+      });
+
+      return {
+        success:
+          true,
+
+        user:
+          loggedUser,
+
+        message:
+          responseData.message ||
+          'Login realizado com sucesso.',
+      };
+    } catch (error) {
+      console.log(
+        'ERRO AO CONFIRMAR VERIFICAÇÃO EM DUAS ETAPAS:',
+        {
+          message:
+            error.message,
+
+          status:
+            error.response
+              ?.status,
+
+          response:
+            error.response
+              ?.data,
+        }
+      );
+
+      const errorMessage =
+        error.response
+          ?.data
+          ?.message ||
+        'Não foi possível confirmar o código.';
+
+      /*
+       * Se o desafio expirou, foi usado
+       * ou atingiu o limite de tentativas,
+       * remove os dados temporários.
+       */
+      const challengeExpired =
+        errorMessage
+          .toLowerCase()
+          .includes(
+            'expirou'
+          ) ||
+        errorMessage
+          .toLowerCase()
+          .includes(
+            'faça login novamente'
+          ) ||
+        errorMessage
+          .toLowerCase()
+          .includes(
+            'já foi utilizada'
+          ) ||
+        errorMessage
+          .toLowerCase()
+          .includes(
+            'não é mais válida'
+          );
+
+      if (challengeExpired) {
+        setTwoFactorChallenge(
+          null
+        );
+      }
+
+      return {
+        success:
+          false,
+
+        challengeExpired,
+
+        attemptsRemaining:
+          error.response
+            ?.data
+            ?.attemptsRemaining,
+
+        message:
+          errorMessage,
+      };
+    }
+  }
+
+  /*
    * CRIAR CONTA
-   *
-   * Recebe também:
-   *
-   * - termsAccepted;
-   * - termsAcceptedAt;
-   * - termsVersion;
-   * - privacyVersion.
    */
   async function signUp(
     data
@@ -366,6 +826,11 @@ export function AuthProvider({
         success:
           false,
 
+        code:
+          error.response
+            ?.data
+            ?.code,
+
         message:
           error.response
             ?.data
@@ -403,14 +868,13 @@ export function AuthProvider({
 
       return response.data;
     } catch (error) {
-      /*
-       * Se o token deixou de ser válido,
-       * encerra a sessão automaticamente.
-       */
       if (
         error.response
           ?.status ===
-        401
+          401 ||
+        error.response
+          ?.status ===
+          403
       ) {
         await signOut();
       }
@@ -437,7 +901,22 @@ export function AuthProvider({
         signed:
           Boolean(user),
 
+        /*
+         * DESAFIO DA VERIFICAÇÃO
+         */
+        twoFactorChallenge,
+
+        hasTwoFactorChallenge:
+          Boolean(
+            twoFactorChallenge
+              ?.challengeToken
+          ),
+
         signIn,
+
+        confirmTwoFactorLogin,
+
+        cancelTwoFactorChallenge,
 
         signUp,
 

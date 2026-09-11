@@ -1,8 +1,13 @@
 import express from 'express';
+
 import http from 'http';
+
 import cors from 'cors';
+
 import dotenv from 'dotenv';
+
 import path from 'path';
+
 import fs from 'fs';
 
 import {
@@ -25,11 +30,23 @@ import {
  * a sincronização das tabelas.
  */
 import './models/User.js';
+
 import './models/Post.js';
+
 import './models/Chat.js';
+
 import './models/Message.js';
+
 import './models/PasswordVerification.js';
 
+import './models/EmailChangeVerification.js';
+
+import './models/TwoFactorVerification.js';
+
+/*
+ * CARREGAR AS VARIÁVEIS
+ * DO ARQUIVO .ENV
+ */
 dotenv.config();
 
 /*
@@ -76,14 +93,16 @@ const usersDirectory =
 fs.mkdirSync(
   postsDirectory,
   {
-    recursive: true,
+    recursive:
+      true,
   }
 );
 
 fs.mkdirSync(
   usersDirectory,
   {
-    recursive: true,
+    recursive:
+      true,
   }
 );
 
@@ -110,9 +129,11 @@ initializeSocket(
  */
 app.use(
   cors({
-    origin: true,
+    origin:
+      true,
 
-    credentials: true,
+    credentials:
+      true,
   })
 );
 
@@ -121,7 +142,8 @@ app.use(
  */
 app.use(
   express.json({
-    limit: '10mb',
+    limit:
+      '10mb',
   })
 );
 
@@ -130,9 +152,11 @@ app.use(
  */
 app.use(
   express.urlencoded({
-    extended: true,
+    extended:
+      true,
 
-    limit: '10mb',
+    limit:
+      '10mb',
   })
 );
 
@@ -192,11 +216,19 @@ app.get(
  * /chat
  * /upload
  *
- * As rotas públicas de recuperação
- * ficam disponíveis em:
+ * Recuperação de senha:
  *
  * POST /users/password/forgot/request-code
  * POST /users/password/forgot/confirm
+ *
+ * Troca de e-mail:
+ *
+ * POST /users/email/request-change
+ * POST /users/email/confirm-change
+ *
+ * Confirmação do login em duas etapas:
+ *
+ * POST /auth/two-factor/confirm
  */
 app.use(
   routes
@@ -302,9 +334,23 @@ async function startServer() {
 
     /*
      * SINCRONIZAR AS TABELAS
+     *
+     * Os modelos importados anteriormente
+     * serão sincronizados com o banco.
+     *
+     * Isso inclui:
+     *
+     * password_verifications
+     * email_change_verifications
+     * two_factor_verifications
+     *
+     * Além do campo:
+     *
+     * users.two_factor_enabled
      */
     await sequelize.sync({
-      alter: true,
+      alter:
+        true,
     });
 
     console.log(
@@ -328,6 +374,14 @@ async function startServer() {
 
         console.log(
           'Recuperação de senha disponível.'
+        );
+
+        console.log(
+          'Verificação de troca de e-mail disponível.'
+        );
+
+        console.log(
+          'Verificação em duas etapas disponível.'
         );
       }
     );

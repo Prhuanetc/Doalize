@@ -42,6 +42,10 @@ import imageUserDark from '../../../assets/imageuserdark.png';
 
 import styles from './styles';
 
+/*
+ * IDENTIFICAR A EXTENSÃO
+ * DA FOTO SELECIONADA
+ */
 function getFileExtension(
   fileName,
   mimeType
@@ -85,6 +89,9 @@ function getFileExtension(
   return 'jpg';
 }
 
+/*
+ * IDENTIFICAR O MIME TYPE
+ */
 function getMimeType(
   extension,
   assetMimeType
@@ -122,6 +129,10 @@ function getMimeType(
   return 'image/jpeg';
 }
 
+/*
+ * CRIAR ARQUIVO PARA
+ * ENVIO PELO FORM DATA
+ */
 function createPhotoFile(
   asset
 ) {
@@ -189,7 +200,9 @@ function createPhotoFile(
   };
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({
+  navigation,
+}) {
   const {
     theme,
     darkMode,
@@ -279,6 +292,10 @@ export default function SettingsScreen() {
     setAnonymizingAccount,
   ] = useState(false);
 
+  /*
+   * ATUALIZAR DADOS LOCAIS
+   * QUANDO O USUÁRIO MUDAR
+   */
   useEffect(() => {
     setName(
       user?.name || ''
@@ -301,6 +318,9 @@ export default function SettingsScreen() {
     );
   }, [user]);
 
+  /*
+   * AVATAR PADRÃO
+   */
   const defaultAvatar =
     useMemo(() => {
       return darkMode
@@ -308,6 +328,9 @@ export default function SettingsScreen() {
         : imageUserDark;
     }, [darkMode]);
 
+  /*
+   * FOTO REMOTA
+   */
   const remotePhotoUrl =
     useMemo(() => {
       if (
@@ -324,6 +347,9 @@ export default function SettingsScreen() {
       );
     }, [user?.photo]);
 
+  /*
+   * FOTO EXIBIDA
+   */
   const avatarSource =
     useMemo(() => {
       if (
@@ -360,7 +386,20 @@ export default function SettingsScreen() {
       remotePhotoFailed
     );
 
+  const screenBusy =
+    profileLoading ||
+    requestingCode ||
+    changingPassword ||
+    anonymizingAccount;
+
+  /*
+   * SELECIONAR FOTO
+   */
   async function handlePickPhoto() {
+    if (screenBusy) {
+      return;
+    }
+
     try {
       const permission =
         await ImagePicker
@@ -415,29 +454,6 @@ export default function SettingsScreen() {
         return;
       }
 
-      console.log(
-        'FOTO SELECIONADA:',
-        {
-          uri:
-            asset.uri,
-
-          fileName:
-            asset.fileName,
-
-          mimeType:
-            asset.mimeType,
-
-          width:
-            asset.width,
-
-          height:
-            asset.height,
-
-          fileSize:
-            asset.fileSize,
-        }
-      );
-
       setSelectedPhoto(
         asset
       );
@@ -454,6 +470,9 @@ export default function SettingsScreen() {
     }
   }
 
+  /*
+   * ENVIAR FOTO PARA O SERVIDOR
+   */
   async function uploadProfilePhoto(
     asset
   ) {
@@ -468,32 +487,6 @@ export default function SettingsScreen() {
     formData.append(
       'file',
       file
-    );
-
-    console.log(
-      'INICIANDO UPLOAD DA FOTO:',
-      {
-        url:
-          `${api.defaults.baseURL}/upload/user`,
-
-        file: {
-          uri:
-            file.uri,
-
-          name:
-            file.name,
-
-          type:
-            file.type,
-        },
-
-        hasAuthorization:
-          Boolean(
-            api.defaults
-              .headers
-              .Authorization
-          ),
-      }
     );
 
     try {
@@ -520,11 +513,6 @@ export default function SettingsScreen() {
           }
         );
 
-      console.log(
-        'UPLOAD DA FOTO CONCLUÍDO:',
-        response.data
-      );
-
       const photoPath =
         response.data
           ?.file
@@ -542,13 +530,10 @@ export default function SettingsScreen() {
       return photoPath;
     } catch (error) {
       console.log(
-        'ERRO DETALHADO DO UPLOAD:',
+        'ERRO AO ENVIAR FOTO:',
         {
           message:
             error.message,
-
-          code:
-            error.code,
 
           status:
             error.response
@@ -557,20 +542,6 @@ export default function SettingsScreen() {
           response:
             error.response
               ?.data,
-
-          requestUrl:
-            `${api.defaults.baseURL}/upload/user`,
-
-          file: {
-            uri:
-              file.uri,
-
-            name:
-              file.name,
-
-            type:
-              file.type,
-          },
         }
       );
 
@@ -583,26 +554,29 @@ export default function SettingsScreen() {
         );
       }
 
-      if (
+      throw new Error(
         error.response
           ?.data
-          ?.message
-      ) {
-        throw new Error(
-          error.response
-            .data
-            .message
-        );
-      }
-
-      throw new Error(
-        'Não foi possível enviar a foto. Verifique o terminal do servidor.'
+          ?.message ||
+        'Não foi possível enviar a foto.'
       );
     }
   }
 
+  /*
+   * SALVAR DADOS DO PERFIL
+   *
+   * O e-mail não é enviado.
+   */
   async function handleSaveProfile() {
-    if (!name.trim()) {
+    if (screenBusy) {
+      return;
+    }
+
+    const normalizedName =
+      name.trim();
+
+    if (!normalizedName) {
       Alert.alert(
         'Atenção',
         'Digite seu nome.'
@@ -611,10 +585,12 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (!email.trim()) {
+    if (
+      normalizedName.length < 2
+    ) {
       Alert.alert(
         'Atenção',
-        'Digite seu e-mail.'
+        'O nome deve possuir pelo menos 2 caracteres.'
       );
 
       return;
@@ -640,12 +616,7 @@ export default function SettingsScreen() {
           '/users/update',
           {
             name:
-              name.trim(),
-
-            email:
-              email
-                .trim()
-                .toLowerCase(),
+              normalizedName,
 
             photo,
 
@@ -680,7 +651,8 @@ export default function SettingsScreen() {
 
       Alert.alert(
         'Sucesso',
-        'Perfil atualizado com sucesso.'
+        response.data?.message ||
+          'Perfil atualizado com sucesso.'
       );
     } catch (error) {
       console.log(
@@ -689,13 +661,13 @@ export default function SettingsScreen() {
           message:
             error.message,
 
-          response:
-            error.response
-              ?.data,
-
           status:
             error.response
               ?.status,
+
+          response:
+            error.response
+              ?.data,
         }
       );
 
@@ -714,7 +686,34 @@ export default function SettingsScreen() {
     }
   }
 
+  /*
+   * ABRIR TELA DE
+   * ALTERAÇÃO DE E-MAIL
+   */
+  function handleOpenEmailChange() {
+    if (screenBusy) {
+      return;
+    }
+
+    navigation.navigate(
+      'EmailChangeScreen'
+    );
+  }
+
+  /*
+   * SOLICITAR CÓDIGO
+   * PARA TROCAR A SENHA
+   */
   async function handleRequestCode() {
+    if (
+      requestingCode ||
+      changingPassword ||
+      profileLoading ||
+      anonymizingAccount
+    ) {
+      return;
+    }
+
     try {
       setRequestingCode(
         true
@@ -728,6 +727,10 @@ export default function SettingsScreen() {
       setPasswordSectionVisible(
         true
       );
+
+      setVerificationCode('');
+      setNewPassword('');
+      setConfirmPassword('');
 
       Alert.alert(
         'Código enviado',
@@ -754,21 +757,35 @@ export default function SettingsScreen() {
     }
   }
 
+  /*
+   * TROCAR SENHA
+   */
   async function handleChangePassword() {
     if (
-      !verificationCode.trim()
+      changingPassword ||
+      requestingCode
+    ) {
+      return;
+    }
+
+    const normalizedCode =
+      verificationCode.trim();
+
+    if (
+      !/^\d{6}$/.test(
+        normalizedCode
+      )
     ) {
       Alert.alert(
         'Atenção',
-        'Digite o código enviado ao seu e-mail.'
+        'Digite o código de verificação com 6 dígitos.'
       );
 
       return;
     }
 
     if (
-      newPassword.length <
-      6
+      newPassword.length < 6
     ) {
       Alert.alert(
         'Atenção',
@@ -800,8 +817,7 @@ export default function SettingsScreen() {
           '/users/password/confirm',
           {
             code:
-              verificationCode
-                .trim(),
+              normalizedCode,
 
             newPassword,
 
@@ -842,7 +858,54 @@ export default function SettingsScreen() {
     }
   }
 
+  /*
+   * CANCELAR TROCA DE SENHA
+   */
+  function handleCancelPasswordChange() {
+    if (
+      changingPassword ||
+      requestingCode
+    ) {
+      return;
+    }
+
+    setVerificationCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+
+    setPasswordSectionVisible(
+      false
+    );
+  }
+
+  /*
+   * CONFIGURAR VERIFICAÇÃO
+   * EM DUAS ETAPAS
+   *
+   * A rota será registrada quando a
+   * tela específica for criada.
+   */
+  function handleTwoFactorSettings() {
+    if (screenBusy) {
+      return;
+    }
+
+    Alert.alert(
+      'Verificação em duas etapas',
+      user?.two_factor_enabled
+        ? 'A verificação em duas etapas está ativada nesta conta.'
+        : 'A tela de ativação da verificação em duas etapas ainda precisa ser conectada.'
+    );
+  }
+
+  /*
+   * SAIR DA CONTA
+   */
   function handleLogout() {
+    if (screenBusy) {
+      return;
+    }
+
     Alert.alert(
       'Sair da conta',
       'Deseja realmente sair?',
@@ -867,17 +930,16 @@ export default function SettingsScreen() {
   }
 
   /*
-   * SOLICITAR CONFIRMAÇÃO
-   * DA ANONIMIZAÇÃO
+   * CONFIRMAR ANONIMIZAÇÃO
    */
   function handleAnonymizeAccount() {
-    if (anonymizingAccount) {
+    if (screenBusy) {
       return;
     }
 
     Alert.alert(
       'Anonimizar conta',
-      'Seus dados pessoais serão removidos e você perderá definitivamente o acesso à conta. Suas publicações, mensagens e conversas serão preservadas de forma anônima. Essa ação não poderá ser desfeita.',
+      'Seus dados pessoais serão removidos e você perderá definitivamente o acesso à conta. Suas publicações serão preservadas sem identificar você. As mensagens e conversas relacionadas serão removidas. Essa ação não poderá ser desfeita.',
       [
         {
           text:
@@ -906,14 +968,12 @@ export default function SettingsScreen() {
   }
 
   /*
-   * ANONIMIZAR A CONTA
-   *
-   * A rota continua com o mesmo
-   * endereço para manter compatibilidade
-   * com o backend.
+   * ANONIMIZAR CONTA
    */
   async function confirmAnonymizeAccount() {
-    if (anonymizingAccount) {
+    if (
+      anonymizingAccount
+    ) {
       return;
     }
 
@@ -927,16 +987,12 @@ export default function SettingsScreen() {
           '/users/delete'
         );
 
-      /*
-       * Limpa a sessão local depois que
-       * o servidor confirma a anonimização.
-       */
       await signOut();
 
       Alert.alert(
         'Conta anonimizada',
         response.data?.message ||
-          'Seus dados pessoais foram removidos e sua conta foi anonimizada.'
+          'Seus dados pessoais foram removidos.'
       );
     } catch (error) {
       console.log(
@@ -992,6 +1048,7 @@ export default function SettingsScreen() {
           false
         }
       >
+        {/* PERFIL */}
         <Text
           style={[
             styles.sectionTitle,
@@ -1046,13 +1103,18 @@ export default function SettingsScreen() {
               handlePickPhoto
             }
             disabled={
-              profileLoading
+              screenBusy
             }
             style={[
               styles.changePhotoButton,
               {
                 backgroundColor:
                   theme.primary,
+
+                opacity:
+                  screenBusy
+                    ? 0.6
+                    : 1,
               },
             ]}
           >
@@ -1067,10 +1129,14 @@ export default function SettingsScreen() {
 
           {selectedPhoto ? (
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() =>
                 setSelectedPhoto(
                   null
                 )
+              }
+              disabled={
+                screenBusy
               }
               style={
                 styles.cancelPhotoButton
@@ -1102,41 +1168,16 @@ export default function SettingsScreen() {
 
         <Input
           placeholder="Seu nome"
-          value={name}
+          value={
+            name
+          }
           onChangeText={
             setName
           }
           editable={
-            !profileLoading
+            !screenBusy
           }
           maxLength={120}
-        />
-
-        <Text
-          style={[
-            styles.label,
-            {
-              color:
-                theme.text,
-            },
-          ]}
-        >
-          E-mail
-        </Text>
-
-        <Input
-          placeholder="Seu e-mail"
-          value={email}
-          onChangeText={
-            setEmail
-          }
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={
-            !profileLoading
-          }
-          maxLength={255}
         />
 
         <Text
@@ -1162,7 +1203,7 @@ export default function SettingsScreen() {
           multiline
           numberOfLines={5}
           editable={
-            !profileLoading
+            !screenBusy
           }
           maxLength={500}
           textAlignVertical="top"
@@ -1194,14 +1235,16 @@ export default function SettingsScreen() {
 
         <Input
           placeholder="Cidade, estado ou região"
-          value={location}
+          value={
+            location
+          }
           onChangeText={
             setLocation
           }
           editable={
-            !profileLoading
+            !screenBusy
           }
-          maxLength={255}
+          maxLength={160}
         />
 
         <Button
@@ -1211,6 +1254,9 @@ export default function SettingsScreen() {
           }
           loading={
             profileLoading
+          }
+          disabled={
+            screenBusy
           }
         />
 
@@ -1224,6 +1270,7 @@ export default function SettingsScreen() {
           ]}
         />
 
+        {/* SEGURANÇA */}
         <Text
           style={[
             styles.sectionTitle,
@@ -1234,6 +1281,75 @@ export default function SettingsScreen() {
           ]}
         >
           Segurança
+        </Text>
+
+        <Text
+          style={[
+            styles.label,
+            {
+              color:
+                theme.text,
+            },
+          ]}
+        >
+          E-mail atual
+        </Text>
+
+        <Input
+          placeholder="E-mail da conta"
+          value={
+            email
+          }
+          editable={false}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <Text
+          style={[
+            styles.helperText,
+            {
+              color:
+                theme.textSecondary,
+            },
+          ]}
+        >
+          A alteração do e-mail exige um código enviado ao endereço atual da conta.
+        </Text>
+
+        <Button
+          title="Alterar e-mail"
+          onPress={
+            handleOpenEmailChange
+          }
+          disabled={
+            screenBusy
+          }
+          type="secondary"
+        />
+
+        <View
+          style={[
+            styles.divider,
+            {
+              backgroundColor:
+                theme.border,
+            },
+          ]}
+        />
+
+        {/* ALTERAR SENHA */}
+        <Text
+          style={[
+            styles.sectionTitle,
+            {
+              color:
+                theme.text,
+            },
+          ]}
+        >
+          Alterar senha
         </Text>
 
         <Text
@@ -1249,7 +1365,11 @@ export default function SettingsScreen() {
         </Text>
 
         <Button
-          title="Enviar código por e-mail"
+          title={
+            passwordSectionVisible
+              ? 'Enviar novo código'
+              : 'Enviar código por e-mail'
+          }
           onPress={
             handleRequestCode
           }
@@ -1257,7 +1377,9 @@ export default function SettingsScreen() {
             requestingCode
           }
           disabled={
-            changingPassword
+            changingPassword ||
+            profileLoading ||
+            anonymizingAccount
           }
           type="secondary"
         />
@@ -1289,10 +1411,17 @@ export default function SettingsScreen() {
                 value
               ) =>
                 setVerificationCode(
-                  value.replace(
-                    /\D/g,
-                    ''
+                  String(
+                    value || ''
                   )
+                    .replace(
+                      /\D/g,
+                      ''
+                    )
+                    .slice(
+                      0,
+                      6
+                    )
                 )
               }
               keyboardType="number-pad"
@@ -1366,6 +1495,21 @@ export default function SettingsScreen() {
               loading={
                 changingPassword
               }
+              disabled={
+                requestingCode
+              }
+            />
+
+            <Button
+              title="Cancelar alteração"
+              onPress={
+                handleCancelPasswordChange
+              }
+              disabled={
+                changingPassword ||
+                requestingCode
+              }
+              type="secondary"
             />
           </View>
         ) : null}
@@ -1380,6 +1524,59 @@ export default function SettingsScreen() {
           ]}
         />
 
+        {/* DUAS ETAPAS */}
+        <Text
+          style={[
+            styles.sectionTitle,
+            {
+              color:
+                theme.text,
+            },
+          ]}
+        >
+          Verificação em duas etapas
+        </Text>
+
+        <Text
+          style={[
+            styles.helperText,
+            {
+              color:
+                theme.textSecondary,
+            },
+          ]}
+        >
+          {user?.two_factor_enabled
+            ? 'A verificação em duas etapas está ativada. Um código será solicitado nos próximos logins.'
+            : 'Adicione uma confirmação por código aos próximos logins da sua conta.'}
+        </Text>
+
+        <Button
+          title={
+            user?.two_factor_enabled
+              ? 'Verificação ativada'
+              : 'Configurar verificação'
+          }
+          onPress={
+            handleTwoFactorSettings
+          }
+          disabled={
+            screenBusy
+          }
+          type="secondary"
+        />
+
+        <View
+          style={[
+            styles.divider,
+            {
+              backgroundColor:
+                theme.border,
+            },
+          ]}
+        />
+
+        {/* CONTA */}
         <Text
           style={[
             styles.sectionTitle,
@@ -1398,7 +1595,7 @@ export default function SettingsScreen() {
             handleLogout
           }
           disabled={
-            anonymizingAccount
+            screenBusy
           }
           type="secondary"
         />
@@ -1412,7 +1609,7 @@ export default function SettingsScreen() {
             },
           ]}
         >
-          Ao anonimizar sua conta, seus dados pessoais serão removidos permanentemente. As publicações, mensagens e conversas permanecerão no Doalize sem identificar você.
+          Ao anonimizar sua conta, seus dados pessoais serão removidos permanentemente. As publicações permanecerão sem identificar você, enquanto mensagens e conversas relacionadas serão removidas.
         </Text>
 
         <Button

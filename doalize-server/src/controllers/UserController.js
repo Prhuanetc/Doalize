@@ -18,9 +18,11 @@ import User from '../models/User.js';
 import Chat from '../models/Chat.js';
 import Message from '../models/Message.js';
 import PasswordVerification from '../models/PasswordVerification.js';
+import EmailChangeVerification from '../models/EmailChangeVerification.js';
 
 import {
   sendPasswordCode,
+  sendEmailChangeCode,
 } from '../services/emailService.js';
 
 const __filename =
@@ -39,11 +41,78 @@ const uploadsDirectory =
     '../../uploads'
   );
 
-const MAX_CODE_ATTEMPTS = 5;
+const MAX_CODE_ATTEMPTS =
+  5;
 
-const CODE_EXPIRATION_MINUTES = 10;
+const CODE_EXPIRATION_MINUTES =
+  10;
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH =
+  6;
+
+/*
+ * VALIDAR IDENTIFICADOR
+ */
+function isValidUserId(
+  userId
+) {
+  return (
+    Number.isInteger(
+      userId
+    ) &&
+    userId > 0
+  );
+}
+
+/*
+ * NORMALIZAR E-MAIL
+ */
+function normalizeEmail(
+  email
+) {
+  if (
+    typeof email !==
+    'string'
+  ) {
+    return '';
+  }
+
+  return email
+    .trim()
+    .toLowerCase();
+}
+
+/*
+ * VALIDAR FORMATO DO E-MAIL
+ */
+function isValidEmail(
+  email
+) {
+  if (
+    typeof email !==
+    'string'
+  ) {
+    return false;
+  }
+
+  const emailPattern =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  return emailPattern.test(
+    email
+  );
+}
+
+/*
+ * NORMALIZAR CÓDIGO
+ */
+function normalizeCode(
+  code
+) {
+  return String(
+    code || ''
+  ).trim();
+}
 
 /*
  * TRANSFORMAR UM CAMINHO PÚBLICO
@@ -65,7 +134,10 @@ function getPhysicalUploadPath(
   let normalizedPath =
     publicPath
       .trim()
-      .replace(/\\/g, '/');
+      .replace(
+        /\\/g,
+        '/'
+      );
 
   if (!normalizedPath) {
     return null;
@@ -150,7 +222,8 @@ async function removeUploadFile(
     );
   } catch (error) {
     if (
-      error.code === 'ENOENT'
+      error.code ===
+      'ENOENT'
     ) {
       return;
     }
@@ -169,9 +242,6 @@ async function removeUploadFile(
 
 /*
  * REMOVER UMA LISTA DE ARQUIVOS
- *
- * Caminhos repetidos são processados
- * apenas uma vez.
  */
 async function removeUploadFiles(
   publicPaths
@@ -198,8 +268,7 @@ async function removeUploadFiles(
 }
 
 /*
- * IDENTIFICAR UMA CONTA
- * QUE JÁ FOI ANONIMIZADA
+ * IDENTIFICAR CONTA ANONIMIZADA
  */
 function isAnonymousEmail(
   email
@@ -214,8 +283,8 @@ function isAnonymousEmail(
 }
 
 /*
- * CRIAR E-MAIL INTERNO E ÚNICO
- * PARA A CONTA ANONIMIZADA
+ * CRIAR E-MAIL INTERNO
+ * PARA CONTA ANONIMIZADA
  */
 function createAnonymousEmail(
   userId
@@ -233,9 +302,7 @@ function createAnonymousEmail(
 
 /*
  * CRIAR SENHA ALEATÓRIA
- *
- * O antigo usuário não conhece essa senha
- * e não conseguirá entrar novamente.
+ * PARA CONTA ANONIMIZADA
  */
 async function createAnonymousPassword() {
   const randomPassword =
@@ -250,6 +317,30 @@ async function createAnonymousPassword() {
 }
 
 /*
+ * CRIAR CÓDIGO DE SEIS DÍGITOS
+ */
+function createVerificationCode() {
+  return String(
+    crypto.randomInt(
+      100000,
+      1000000
+    )
+  );
+}
+
+/*
+ * CRIAR DATA DE EXPIRAÇÃO
+ */
+function createExpirationDate() {
+  return new Date(
+    Date.now() +
+      CODE_EXPIRATION_MINUTES *
+        60 *
+        1000
+  );
+}
+
+/*
  * CRIAR E ENVIAR CÓDIGO
  * DE ALTERAÇÃO DE SENHA
  */
@@ -257,12 +348,7 @@ async function createAndSendPasswordCode(
   user
 ) {
   const code =
-    String(
-      crypto.randomInt(
-        100000,
-        1000000
-      )
-    );
+    createVerificationCode();
 
   const codeHash =
     await bcrypt.hash(
@@ -271,12 +357,7 @@ async function createAndSendPasswordCode(
     );
 
   const expiresAt =
-    new Date(
-      Date.now() +
-        CODE_EXPIRATION_MINUTES *
-          60 *
-          1000
-    );
+    createExpirationDate();
 
   /*
    * INVALIDAR CÓDIGOS ANTERIORES
@@ -324,6 +405,81 @@ async function createAndSendPasswordCode(
 }
 
 /*
+ * CRIAR E ENVIAR CÓDIGO
+ * DE ALTERAÇÃO DE E-MAIL
+ *
+ * O código é enviado ao e-mail
+ * atual da conta.
+ */
+async function createAndSendEmailChangeCode({
+  user,
+  newEmail,
+}) {
+  const code =
+    createVerificationCode();
+
+  const codeHash =
+    await bcrypt.hash(
+      code,
+      10
+    );
+
+  const expiresAt =
+    createExpirationDate();
+
+  /*
+   * INVALIDAR SOLICITAÇÕES ANTERIORES
+   */
+  await EmailChangeVerification.destroy({
+    where: {
+      user_id:
+        user.id,
+    },
+  });
+
+  const verification =
+    await EmailChangeVerification.create({
+      user_id:
+        user.id,
+
+      new_email:
+        newEmail,
+
+      code_hash:
+        codeHash,
+
+      expires_at:
+        expiresAt,
+
+      attempts:
+        0,
+
+      used:
+        false,
+    });
+
+  try {
+    await sendEmailChangeCode({
+      currentEmail:
+        user.email,
+
+      newEmail,
+
+      name:
+        user.name,
+
+      code,
+    });
+  } catch (emailError) {
+    await verification.destroy();
+
+    throw emailError;
+  }
+
+  return verification;
+}
+
+/*
  * VALIDAR CAMPOS DE SENHA
  */
 function validatePasswordFields({
@@ -346,7 +502,9 @@ function validatePasswordFields({
   }
 
   const normalizedCode =
-    String(code).trim();
+    normalizeCode(
+      code
+    );
 
   if (
     !/^\d{6}$/.test(
@@ -363,8 +521,10 @@ function validatePasswordFields({
   }
 
   if (
+    typeof newPassword !==
+      'string' ||
     newPassword.length <
-    MIN_PASSWORD_LENGTH
+      MIN_PASSWORD_LENGTH
   ) {
     return {
       valid:
@@ -530,11 +690,18 @@ async function changePasswordWithCode({
     );
 
   if (!codeMatches) {
+    const updatedAttempts =
+      verification.attempts +
+      1;
+
     await verification.update(
       {
         attempts:
-          verification.attempts +
-          1,
+          updatedAttempts,
+
+        used:
+          updatedAttempts >=
+          MAX_CODE_ATTEMPTS,
       },
       {
         transaction,
@@ -552,7 +719,10 @@ async function changePasswordWithCode({
         true,
 
       message:
-        'Código de verificação incorreto.',
+        updatedAttempts >=
+        MAX_CODE_ATTEMPTS
+          ? 'Limite de tentativas atingido. Solicite um novo código.'
+          : 'Código de verificação incorreto.',
     };
   }
 
@@ -643,6 +813,9 @@ class UserController {
 
   /*
    * ATUALIZAR PERFIL
+   *
+   * Esta rota não altera mais o e-mail.
+   * A troca de endereço exige código.
    */
   async update(
     req,
@@ -650,7 +823,22 @@ class UserController {
   ) {
     try {
       const userId =
-        req.userId;
+        Number(
+          req.userId
+        );
+
+      if (
+        !isValidUserId(
+          userId
+        )
+      ) {
+        return res
+          .status(401)
+          .json({
+            message:
+              'Usuário não autenticado.',
+          });
+      }
 
       const {
         name,
@@ -679,19 +867,45 @@ class UserController {
           });
       }
 
+      /*
+       * BLOQUEAR ALTERAÇÃO DIRETA
+       * DO E-MAIL
+       *
+       * O mesmo e-mail pode aparecer no
+       * corpo por compatibilidade com
+       * versões antigas do aplicativo.
+       *
+       * Um endereço diferente é bloqueado.
+       */
+      if (
+        email !== undefined
+      ) {
+        const requestedEmail =
+          normalizeEmail(
+            email
+          );
+
+        if (
+          requestedEmail !==
+          user.email
+        ) {
+          return res
+            .status(400)
+            .json({
+              message:
+                'Para alterar o e-mail, solicite um código de verificação.',
+
+              code:
+                'EMAIL_VERIFICATION_REQUIRED',
+            });
+        }
+      }
+
       const normalizedName =
         typeof name ===
           'string'
           ? name.trim()
           : user.name;
-
-      const normalizedEmail =
-        typeof email ===
-          'string'
-          ? email
-              .trim()
-              .toLowerCase()
-          : user.email;
 
       if (!normalizedName) {
         return res
@@ -702,40 +916,18 @@ class UserController {
           });
       }
 
-      if (!normalizedEmail) {
+      if (
+        normalizedName.length <
+          2 ||
+        normalizedName.length >
+          120
+      ) {
         return res
           .status(400)
           .json({
             message:
-              'O e-mail é obrigatório.',
+              'O nome deve possuir entre 2 e 120 caracteres.',
           });
-      }
-
-      if (
-        normalizedEmail !==
-        user.email
-      ) {
-        const emailExists =
-          await User.findOne({
-            where: {
-              email:
-                normalizedEmail,
-
-              id: {
-                [Op.ne]:
-                  user.id,
-              },
-            },
-          });
-
-        if (emailExists) {
-          return res
-            .status(400)
-            .json({
-              message:
-                'E-mail já está em uso.',
-            });
-        }
       }
 
       const previousPhoto =
@@ -750,9 +942,9 @@ class UserController {
         name:
           normalizedName,
 
-        email:
-          normalizedEmail,
-
+        /*
+         * O campo email não aparece aqui.
+         */
         photo:
           normalizedPhoto,
 
@@ -813,7 +1005,23 @@ class UserController {
     } catch (error) {
       console.error(
         'ERRO AO ATUALIZAR PERFIL:',
-        error
+        {
+          name:
+            error.name,
+
+          message:
+            error.message,
+
+          sql:
+            error.sql,
+
+          original:
+            error.original
+              ?.message,
+
+          stack:
+            error.stack,
+        }
       );
 
       return res
@@ -826,8 +1034,672 @@ class UserController {
   }
 
   /*
-   * SOLICITAR CÓDIGO PELAS
-   * CONFIGURAÇÕES
+   * SOLICITAR CÓDIGO PARA
+   * ALTERAÇÃO DO E-MAIL
+   *
+   * POST /users/email/request-change
+   *
+   * O código é enviado ao e-mail atual.
+   */
+  async requestEmailChange(
+    req,
+    res
+  ) {
+    try {
+      const userId =
+        Number(
+          req.userId
+        );
+
+      if (
+        !isValidUserId(
+          userId
+        )
+      ) {
+        return res
+          .status(401)
+          .json({
+            message:
+              'Usuário não autenticado.',
+          });
+      }
+
+      const normalizedNewEmail =
+        normalizeEmail(
+          req.body
+            ?.newEmail
+        );
+
+      if (!normalizedNewEmail) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'Informe o novo e-mail.',
+          });
+      }
+
+      if (
+        !isValidEmail(
+          normalizedNewEmail
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'Informe um novo e-mail válido.',
+          });
+      }
+
+      if (
+        normalizedNewEmail.endsWith(
+          '@doalize.invalid'
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'Informe um novo e-mail válido.',
+          });
+      }
+
+      const user =
+        await User.findByPk(
+          userId
+        );
+
+      if (
+        !user ||
+        isAnonymousEmail(
+          user.email
+        )
+      ) {
+        return res
+          .status(404)
+          .json({
+            message:
+              'Usuário não encontrado.',
+          });
+      }
+
+      if (
+        normalizedNewEmail ===
+        user.email
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'O novo e-mail deve ser diferente do e-mail atual.',
+          });
+      }
+
+      /*
+       * VERIFICAR SE O NOVO E-MAIL
+       * JÁ PERTENCE A OUTRA CONTA
+       */
+      const emailExists =
+        await User.findOne({
+          where: {
+            email:
+              normalizedNewEmail,
+
+            id: {
+              [Op.ne]:
+                user.id,
+            },
+          },
+
+          attributes: [
+            'id',
+          ],
+        });
+
+      if (emailExists) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'Este e-mail já está cadastrado.',
+          });
+      }
+
+      try {
+        await createAndSendEmailChangeCode({
+          user,
+
+          newEmail:
+            normalizedNewEmail,
+        });
+      } catch (emailError) {
+        console.error(
+          'ERRO AO ENVIAR CÓDIGO DE TROCA DE E-MAIL:',
+          {
+            userId,
+
+            message:
+              emailError.message,
+
+            stack:
+              emailError.stack,
+          }
+        );
+
+        return res
+          .status(500)
+          .json({
+            message:
+              emailError.message ||
+              'Não foi possível enviar o código de verificação.',
+          });
+      }
+
+      return res
+        .status(200)
+        .json({
+          message:
+            'Enviamos um código de verificação para o e-mail atual da conta.',
+
+          code:
+            'EMAIL_CHANGE_CODE_SENT',
+
+          expiresInMinutes:
+            CODE_EXPIRATION_MINUTES,
+        });
+    } catch (error) {
+      console.error(
+        'ERRO AO SOLICITAR TROCA DE E-MAIL:',
+        {
+          userId:
+            req.userId,
+
+          name:
+            error.name,
+
+          message:
+            error.message,
+
+          sql:
+            error.sql,
+
+          original:
+            error.original
+              ?.message,
+
+          stack:
+            error.stack,
+        }
+      );
+
+      return res
+        .status(500)
+        .json({
+          message:
+            'Não foi possível solicitar a troca de e-mail.',
+        });
+    }
+  }
+
+  /*
+   * CONFIRMAR ALTERAÇÃO
+   * DO E-MAIL
+   *
+   * POST /users/email/confirm-change
+   */
+  async confirmEmailChange(
+    req,
+    res
+  ) {
+    const transaction =
+      await sequelize.transaction();
+
+    try {
+      const userId =
+        Number(
+          req.userId
+        );
+
+      const normalizedCode =
+        normalizeCode(
+          req.body?.code
+        );
+
+      if (
+        !isValidUserId(
+          userId
+        )
+      ) {
+        await transaction.rollback();
+
+        return res
+          .status(401)
+          .json({
+            message:
+              'Usuário não autenticado.',
+          });
+      }
+
+      if (!normalizedCode) {
+        await transaction.rollback();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'Informe o código de verificação.',
+          });
+      }
+
+      if (
+        !/^\d{6}$/.test(
+          normalizedCode
+        )
+      ) {
+        await transaction.rollback();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'O código deve possuir 6 dígitos.',
+          });
+      }
+
+      const user =
+        await User.findByPk(
+          userId,
+          {
+            transaction,
+
+            lock:
+              transaction.LOCK.UPDATE,
+          }
+        );
+
+      if (
+        !user ||
+        isAnonymousEmail(
+          user.email
+        )
+      ) {
+        await transaction.rollback();
+
+        return res
+          .status(404)
+          .json({
+            message:
+              'Usuário não encontrado.',
+          });
+      }
+
+      const verification =
+        await EmailChangeVerification.findOne({
+          where: {
+            user_id:
+              userId,
+
+            used:
+              false,
+          },
+
+          order: [
+            [
+              'created_at',
+              'DESC',
+            ],
+          ],
+
+          transaction,
+
+          lock:
+            transaction.LOCK.UPDATE,
+        });
+
+      if (!verification) {
+        await transaction.rollback();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'Nenhuma solicitação válida de troca de e-mail foi encontrada.',
+          });
+      }
+
+      /*
+       * BLOQUEAR DEPOIS DO
+       * LIMITE DE TENTATIVAS
+       */
+      if (
+        verification.attempts >=
+        MAX_CODE_ATTEMPTS
+      ) {
+        await verification.update(
+          {
+            used:
+              true,
+          },
+          {
+            transaction,
+          }
+        );
+
+        await transaction.commit();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'Limite de tentativas atingido. Solicite um novo código.',
+          });
+      }
+
+      /*
+       * VERIFICAR EXPIRAÇÃO
+       */
+      if (
+        new Date(
+          verification.expires_at
+        ).getTime() <
+        Date.now()
+      ) {
+        await verification.update(
+          {
+            used:
+              true,
+          },
+          {
+            transaction,
+          }
+        );
+
+        await transaction.commit();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'O código expirou. Solicite um novo código.',
+          });
+      }
+
+      /*
+       * COMPARAR O CÓDIGO COM O HASH
+       */
+      const codeMatches =
+        await bcrypt.compare(
+          normalizedCode,
+          verification.code_hash
+        );
+
+      if (!codeMatches) {
+        const updatedAttempts =
+          verification.attempts +
+          1;
+
+        const reachedLimit =
+          updatedAttempts >=
+          MAX_CODE_ATTEMPTS;
+
+        await verification.update(
+          {
+            attempts:
+              updatedAttempts,
+
+            used:
+              reachedLimit,
+          },
+          {
+            transaction,
+          }
+        );
+
+        await transaction.commit();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              reachedLimit
+                ? 'Limite de tentativas atingido. Solicite um novo código.'
+                : 'Código de verificação incorreto.',
+
+            attemptsRemaining:
+              Math.max(
+                0,
+                MAX_CODE_ATTEMPTS -
+                  updatedAttempts
+              ),
+          });
+      }
+
+      const normalizedNewEmail =
+        normalizeEmail(
+          verification.new_email
+        );
+
+      if (
+        !normalizedNewEmail ||
+        !isValidEmail(
+          normalizedNewEmail
+        ) ||
+        normalizedNewEmail.endsWith(
+          '@doalize.invalid'
+        )
+      ) {
+        await verification.update(
+          {
+            used:
+              true,
+          },
+          {
+            transaction,
+          }
+        );
+
+        await transaction.commit();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'A solicitação possui um novo e-mail inválido. Solicite outro código.',
+          });
+      }
+
+      if (
+        normalizedNewEmail ===
+        user.email
+      ) {
+        await verification.update(
+          {
+            used:
+              true,
+          },
+          {
+            transaction,
+          }
+        );
+
+        await transaction.commit();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'O novo e-mail já está vinculado à conta.',
+          });
+      }
+
+      /*
+       * VERIFICAR NOVAMENTE SE O E-MAIL
+       * FOI CADASTRADO POR OUTRA CONTA
+       * DURANTE O TEMPO DA CONFIRMAÇÃO
+       */
+      const emailExists =
+        await User.findOne({
+          where: {
+            email:
+              normalizedNewEmail,
+
+            id: {
+              [Op.ne]:
+                user.id,
+            },
+          },
+
+          attributes: [
+            'id',
+          ],
+
+          transaction,
+
+          lock:
+            transaction.LOCK.UPDATE,
+        });
+
+      if (emailExists) {
+        await verification.update(
+          {
+            used:
+              true,
+          },
+          {
+            transaction,
+          }
+        );
+
+        await transaction.commit();
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'Este e-mail já está cadastrado em outra conta.',
+          });
+      }
+
+      /*
+       * ALTERAR O E-MAIL
+       */
+      await user.update(
+        {
+          email:
+            normalizedNewEmail,
+        },
+        {
+          transaction,
+        }
+      );
+
+      /*
+       * INVALIDAR TODAS AS SOLICITAÇÕES
+       * DE TROCA DE E-MAIL DO USUÁRIO
+       */
+      await EmailChangeVerification.update(
+        {
+          used:
+            true,
+        },
+        {
+          where: {
+            user_id:
+              userId,
+          },
+
+          transaction,
+        }
+      );
+
+      await transaction.commit();
+
+      console.log(
+        'E-MAIL ALTERADO COM VERIFICAÇÃO:',
+        {
+          userId:
+            user.id,
+
+          newEmail:
+            normalizedNewEmail,
+        }
+      );
+
+      return res
+        .status(200)
+        .json({
+          message:
+            'E-mail alterado com sucesso. Entre novamente usando o novo endereço.',
+
+          changed:
+            true,
+
+          requiresNewLogin:
+            true,
+
+          email:
+            normalizedNewEmail,
+        });
+    } catch (error) {
+      if (
+        !transaction.finished
+      ) {
+        await transaction.rollback();
+      }
+
+      console.error(
+        'ERRO AO CONFIRMAR TROCA DE E-MAIL:',
+        {
+          userId:
+            req.userId,
+
+          name:
+            error.name,
+
+          message:
+            error.message,
+
+          sql:
+            error.sql,
+
+          parent:
+            error.parent
+              ?.message,
+
+          original:
+            error.original
+              ?.message,
+
+          stack:
+            error.stack,
+        }
+      );
+
+      if (
+        error.name ===
+        'SequelizeUniqueConstraintError'
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'Este e-mail já está cadastrado em outra conta.',
+          });
+      }
+
+      return res
+        .status(500)
+        .json({
+          message:
+            'Não foi possível confirmar a troca de e-mail.',
+        });
+    }
+  }
+
+  /*
+   * SOLICITAR CÓDIGO PARA
+   * ALTERAÇÃO DE SENHA
    */
   async requestPasswordCode(
     req,
@@ -894,8 +1766,7 @@ class UserController {
   }
 
   /*
-   * CONFIRMAR SENHA PELAS
-   * CONFIGURAÇÕES
+   * CONFIRMAR ALTERAÇÃO DE SENHA
    */
   async confirmPassword(
     req,
@@ -995,7 +1866,7 @@ class UserController {
 
   /*
    * SOLICITAR RECUPERAÇÃO
-   * PELO LOGIN
+   * DE SENHA PELO LOGIN
    */
   async requestForgotPasswordCode(
     req,
@@ -1003,12 +1874,9 @@ class UserController {
   ) {
     try {
       const normalizedEmail =
-        typeof req.body?.email ===
-          'string'
-          ? req.body.email
-              .trim()
-              .toLowerCase()
-          : '';
+        normalizeEmail(
+          req.body?.email
+        );
 
       if (!normalizedEmail) {
         return res
@@ -1027,6 +1895,10 @@ class UserController {
           },
         });
 
+      /*
+       * Resposta genérica para não revelar
+       * se o endereço está cadastrado.
+       */
       if (
         !user ||
         isAnonymousEmail(
@@ -1101,12 +1973,9 @@ class UserController {
       } = req.body;
 
       const normalizedEmail =
-        typeof email ===
-          'string'
-          ? email
-              .trim()
-              .toLowerCase()
-          : '';
+        normalizeEmail(
+          email
+        );
 
       if (!normalizedEmail) {
         await transaction.rollback();
@@ -1206,13 +2075,9 @@ class UserController {
   /*
    * ANONIMIZAR CONTA
    *
-   * A rota continua sendo:
-   *
-   * DELETE /users/delete
-   *
    * PRESERVA:
    *
-   * - registro anônimo do usuário;
+   * - registro anônimo;
    * - publicações;
    * - imagens das publicações;
    * - promoções.
@@ -1220,13 +2085,13 @@ class UserController {
    * REMOVE:
    *
    * - dados pessoais;
-   * - acesso à conta;
-   * - foto do perfil;
-   * - códigos de verificação;
-   * - mensagens enviadas;
-   * - mensagens recebidas;
-   * - imagens e áudios das mensagens;
-   * - conversas relacionadas.
+   * - acesso;
+   * - foto;
+   * - códigos de senha;
+   * - códigos de troca de e-mail;
+   * - mensagens;
+   * - anexos das mensagens;
+   * - conversas.
    */
   async delete(
     req,
@@ -1235,7 +2100,8 @@ class UserController {
     const transaction =
       await sequelize.transaction();
 
-    const filesToDelete = [];
+    const filesToDelete =
+      [];
 
     try {
       const userId =
@@ -1244,7 +2110,7 @@ class UserController {
         );
 
       if (
-        !Number.isInteger(
+        !isValidUserId(
           userId
         )
       ) {
@@ -1295,10 +2161,6 @@ class UserController {
           });
       }
 
-      /*
-       * ARMAZENAR A FOTO DE PERFIL
-       * PARA SER APAGADA DEPOIS
-       */
       if (user.photo) {
         filesToDelete.push(
           user.photo
@@ -1306,12 +2168,8 @@ class UserController {
       }
 
       /*
-       * BUSCAR TODAS AS MENSAGENS
-       * ENVIADAS OU RECEBIDAS
-       *
-       * Isso precisa acontecer antes da
-       * exclusão para recuperar imagens
-       * e áudios associados.
+       * BUSCAR ANEXOS DAS MENSAGENS
+       * ANTES DA EXCLUSÃO
        */
       const userMessages =
         await Message.findAll({
@@ -1338,32 +2196,31 @@ class UserController {
           transaction,
         });
 
-      /*
-       * GUARDAR IMAGENS E ÁUDIOS
-       * DAS MENSAGENS
-       */
       for (
-        const message of
+        const savedMessage of
           userMessages
       ) {
-        if (message.image) {
+        if (
+          savedMessage.image
+        ) {
           filesToDelete.push(
-            message.image
+            savedMessage.image
           );
         }
 
-        if (message.audio) {
+        if (
+          savedMessage.audio
+        ) {
           filesToDelete.push(
-            message.audio
+            savedMessage.audio
           );
         }
       }
 
       /*
-       * REMOVER CÓDIGOS DE ALTERAÇÃO
-       * E RECUPERAÇÃO DE SENHA
+       * REMOVER CÓDIGOS DE SENHA
        */
-      const removedVerifications =
+      const removedPasswordVerifications =
         await PasswordVerification.destroy({
           where: {
             user_id:
@@ -1374,8 +2231,21 @@ class UserController {
         });
 
       /*
-       * REMOVER TODAS AS MENSAGENS
-       * ENVIADAS OU RECEBIDAS
+       * REMOVER CÓDIGOS PENDENTES
+       * DE TROCA DE E-MAIL
+       */
+      const removedEmailVerifications =
+        await EmailChangeVerification.destroy({
+          where: {
+            user_id:
+              userId,
+          },
+
+          transaction,
+        });
+
+      /*
+       * REMOVER MENSAGENS
        */
       const deletedMessages =
         await Message.destroy({
@@ -1397,12 +2267,7 @@ class UserController {
         });
 
       /*
-       * REMOVER CONVERSAS RELACIONADAS
-       * AO USUÁRIO
-       *
-       * As mensagens são removidas antes
-       * das conversas para evitar problemas
-       * de chave estrangeira.
+       * REMOVER CONVERSAS
        */
       const deletedChats =
         await Chat.destroy({
@@ -1423,9 +2288,6 @@ class UserController {
           transaction,
         });
 
-      /*
-       * GERAR CREDENCIAIS ANÔNIMAS
-       */
       const anonymousEmail =
         createAnonymousEmail(
           user.id
@@ -1435,10 +2297,7 @@ class UserController {
         await createAnonymousPassword();
 
       /*
-       * ANONIMIZAR O REGISTRO
-       *
-       * O ID permanece igual para preservar
-       * publicações e promoções.
+       * ANONIMIZAR REGISTRO
        */
       await user.update(
         {
@@ -1465,17 +2324,11 @@ class UserController {
         }
       );
 
-      /*
-       * CONFIRMAR TODAS AS ALTERAÇÕES
-       * NO BANCO
-       */
       await transaction.commit();
 
       /*
-       * REMOVER ARQUIVOS FÍSICOS
-       *
-       * Esta etapa acontece somente depois
-       * que o banco confirma a operação.
+       * REMOVER ARQUIVOS APÓS
+       * CONFIRMAR A TRANSAÇÃO
        */
       await removeUploadFiles(
         filesToDelete
@@ -1487,7 +2340,9 @@ class UserController {
           userId:
             user.id,
 
-          removedVerifications,
+          removedPasswordVerifications,
+
+          removedEmailVerifications,
 
           deletedMessages,
 
@@ -1511,6 +2366,12 @@ class UserController {
             true,
 
           removed: {
+            passwordVerifications:
+              removedPasswordVerifications,
+
+            emailVerifications:
+              removedEmailVerifications,
+
             messages:
               deletedMessages,
 

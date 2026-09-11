@@ -4,6 +4,8 @@ import {
 
 import UserController from '../controllers/UserController.js';
 
+import TwoFactorController from '../controllers/TwoFactorController.js';
+
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 const userRoutes =
@@ -15,21 +17,20 @@ const userRoutes =
  * =========================================
  *
  * Estas rotas não exigem autenticação,
- * pois serão utilizadas por usuários que
- * esqueceram a senha e não conseguem
- * acessar a conta.
+ * pois atendem usuários que esqueceram
+ * a senha e não conseguem acessar a conta.
  */
 
 /*
  * SOLICITAR CÓDIGO DE RECUPERAÇÃO
+ *
+ * POST /users/password/forgot/request-code
  *
  * Recebe:
  *
  * {
  *   "email": "usuario@email.com"
  * }
- *
- * POST /users/password/forgot/request-code
  */
 userRoutes.post(
   '/password/forgot/request-code',
@@ -39,6 +40,8 @@ userRoutes.post(
 /*
  * CONFIRMAR CÓDIGO E REDEFINIR SENHA
  *
+ * POST /users/password/forgot/confirm
+ *
  * Recebe:
  *
  * {
@@ -47,8 +50,6 @@ userRoutes.post(
  *   "newPassword": "novaSenha",
  *   "confirmPassword": "novaSenha"
  * }
- *
- * POST /users/password/forgot/confirm
  */
 userRoutes.post(
   '/password/forgot/confirm',
@@ -68,6 +69,12 @@ userRoutes.use(
 );
 
 /*
+ * =========================================
+ * PERFIL
+ * =========================================
+ */
+
+/*
  * BUSCAR PERFIL
  *
  * GET /users/profile
@@ -81,6 +88,16 @@ userRoutes.get(
  * ATUALIZAR PERFIL
  *
  * PUT /users/update
+ *
+ * Esta rota atualiza:
+ *
+ * - nome;
+ * - foto;
+ * - descrição;
+ * - localização.
+ *
+ * O e-mail não pode ser atualizado
+ * diretamente por esta rota.
  */
 userRoutes.put(
   '/update',
@@ -88,13 +105,18 @@ userRoutes.put(
 );
 
 /*
+ * =========================================
+ * ALTERAÇÃO DE SENHA
+ * =========================================
+ */
+
+/*
  * SOLICITAR CÓDIGO PARA ALTERAR A SENHA
- * PELAS CONFIGURAÇÕES
- *
- * Esta rota utiliza req.userId, portanto
- * precisa continuar protegida.
  *
  * POST /users/password/request-code
+ *
+ * O código é enviado ao e-mail
+ * atualmente cadastrado.
  */
 userRoutes.post(
   '/password/request-code',
@@ -103,12 +125,16 @@ userRoutes.post(
 
 /*
  * CONFIRMAR ALTERAÇÃO DE SENHA
- * PELAS CONFIGURAÇÕES
- *
- * Esta rota utiliza req.userId, portanto
- * precisa continuar protegida.
  *
  * POST /users/password/confirm
+ *
+ * Recebe:
+ *
+ * {
+ *   "code": "123456",
+ *   "newPassword": "novaSenha",
+ *   "confirmPassword": "novaSenha"
+ * }
  */
 userRoutes.post(
   '/password/confirm',
@@ -116,9 +142,142 @@ userRoutes.post(
 );
 
 /*
- * EXCLUIR CONTA
+ * =========================================
+ * ALTERAÇÃO DE E-MAIL
+ * =========================================
+ */
+
+/*
+ * SOLICITAR CÓDIGO PARA TROCAR O E-MAIL
+ *
+ * POST /users/email/request-change
+ *
+ * Recebe:
+ *
+ * {
+ *   "newEmail": "novoemail@email.com"
+ * }
+ *
+ * O código é enviado ao endereço
+ * atualmente vinculado à conta.
+ */
+userRoutes.post(
+  '/email/request-change',
+  UserController.requestEmailChange
+);
+
+/*
+ * CONFIRMAR TROCA DO E-MAIL
+ *
+ * POST /users/email/confirm-change
+ *
+ * Recebe:
+ *
+ * {
+ *   "code": "123456"
+ * }
+ *
+ * Depois da confirmação, o aplicativo
+ * encerra a sessão e exige um novo login.
+ */
+userRoutes.post(
+  '/email/confirm-change',
+  UserController.confirmEmailChange
+);
+
+/*
+ * =========================================
+ * VERIFICAÇÃO EM DUAS ETAPAS
+ * =========================================
+ */
+
+/*
+ * CONSULTAR SITUAÇÃO ATUAL
+ *
+ * GET /users/two-factor/status
+ *
+ * Retorna:
+ *
+ * {
+ *   "enabled": true
+ * }
+ *
+ * ou:
+ *
+ * {
+ *   "enabled": false
+ * }
+ */
+userRoutes.get(
+  '/two-factor/status',
+  TwoFactorController.status
+);
+
+/*
+ * SOLICITAR CÓDIGO PARA ATIVAR
+ * OU DESATIVAR A VERIFICAÇÃO
+ *
+ * POST /users/two-factor/request-change
+ *
+ * Para ativar:
+ *
+ * {
+ *   "enable": true
+ * }
+ *
+ * Para desativar:
+ *
+ * {
+ *   "enable": false
+ * }
+ */
+userRoutes.post(
+  '/two-factor/request-change',
+  TwoFactorController.requestChange
+);
+
+/*
+ * CONFIRMAR ATIVAÇÃO OU DESATIVAÇÃO
+ *
+ * POST /users/two-factor/confirm-change
+ *
+ * Para ativar:
+ *
+ * {
+ *   "code": "123456",
+ *   "enable": true
+ * }
+ *
+ * Para desativar:
+ *
+ * {
+ *   "code": "123456",
+ *   "enable": false
+ * }
+ */
+userRoutes.post(
+  '/two-factor/confirm-change',
+  TwoFactorController.confirmChange
+);
+
+/*
+ * =========================================
+ * ANONIMIZAÇÃO DA CONTA
+ * =========================================
+ */
+
+/*
+ * ANONIMIZAR CONTA
  *
  * DELETE /users/delete
+ *
+ * A anonimização:
+ *
+ * - bloqueia o acesso à conta;
+ * - remove dados pessoais;
+ * - apaga códigos pendentes;
+ * - apaga mensagens e conversas;
+ * - preserva publicações.
  */
 userRoutes.delete(
   '/delete',

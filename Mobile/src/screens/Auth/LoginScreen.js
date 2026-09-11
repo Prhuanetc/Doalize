@@ -111,18 +111,51 @@ export default function LoginScreen() {
         return;
       }
 
-      console.log(
-        'LOGIN REALIZADO COM SUCESSO'
-      );
+      /*
+       * VERIFICAÇÃO EM DUAS ETAPAS
+       *
+       * Quando estiver ativada, signIn
+       * ainda não salva uma sessão.
+       *
+       * O desafio temporário foi armazenado
+       * no AuthContext e será usado pela
+       * tela de confirmação.
+       */
+      if (
+        response
+          ?.requiresTwoFactor ===
+        true
+      ) {
+        navigation.navigate(
+          'LoginVerificationScreen',
+          {
+            email:
+              response.email ||
+              normalizedEmail,
+
+            expiresInMinutes:
+              response
+                .expiresInMinutes ||
+              10,
+          }
+        );
+
+        return;
+      }
 
       /*
+       * LOGIN COMUM
+       *
        * Não é necessário navegar
        * manualmente para o Feed.
        *
-       * Quando o AuthContext atualizar
-       * o usuário, o Navigation trocará
-       * automaticamente para AppRoutes.
+       * O AuthContext salva o usuário
+       * e o Navigation troca para
+       * AppRoutes automaticamente.
        */
+      console.log(
+        'LOGIN REALIZADO COM SUCESSO'
+      );
     } catch (error) {
       console.log(
         'ERRO AO FAZER LOGIN:',
@@ -228,7 +261,9 @@ export default function LoginScreen() {
       />
 
       <KeyboardAvoidingView
-        style={styles.container}
+        style={
+          styles.container
+        }
         behavior={
           Platform.OS === 'ios'
             ? 'padding'
@@ -241,7 +276,9 @@ export default function LoginScreen() {
           onPress={
             handleBack
           }
-          disabled={loading}
+          disabled={
+            loading
+          }
           accessibilityRole="button"
           accessibilityLabel="Voltar para a tela inicial"
           style={[
@@ -385,14 +422,18 @@ export default function LoginScreen() {
 
               <Input
                 placeholder="Digite seu e-mail"
-                value={email}
+                value={
+                  email
+                }
                 onChangeText={
                   setEmail
                 }
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!loading}
+                editable={
+                  !loading
+                }
                 returnKeyType="next"
                 maxLength={160}
               />
@@ -417,14 +458,18 @@ export default function LoginScreen() {
 
               <Input
                 placeholder="Digite sua senha"
-                value={password}
+                value={
+                  password
+                }
                 onChangeText={
                   setPassword
                 }
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!loading}
+                editable={
+                  !loading
+                }
                 returnKeyType="done"
                 onSubmitEditing={
                   handleLogin
@@ -438,7 +483,9 @@ export default function LoginScreen() {
               onPress={
                 handleForgotPassword
               }
-              disabled={loading}
+              disabled={
+                loading
+              }
               accessibilityRole="button"
               accessibilityLabel="Recuperar minha senha"
               style={
@@ -469,7 +516,9 @@ export default function LoginScreen() {
               onPress={
                 handleLogin
               }
-              disabled={loading}
+              disabled={
+                loading
+              }
               accessibilityRole="button"
               accessibilityLabel="Entrar na conta"
               style={[
@@ -539,7 +588,9 @@ export default function LoginScreen() {
               onPress={
                 handleOpenRegister
               }
-              disabled={loading}
+              disabled={
+                loading
+              }
               accessibilityRole="button"
               accessibilityLabel="Criar uma nova conta"
               style={
@@ -573,70 +624,92 @@ export default function LoginScreen() {
 const styles =
   StyleSheet.create({
     safeArea: {
-      flex: 1,
+      flex:
+        1,
     },
 
     container: {
-      flex: 1,
+      flex:
+        1,
     },
 
     /*
      * BOTÃO VOLTAR
      */
     backButton: {
-      position: 'absolute',
+      position:
+        'absolute',
 
       top:
-        Platform.OS === 'android'
+        Platform.OS ===
+        'android'
           ? 18
           : 12,
 
-      left: 20,
+      left:
+        20,
 
-      zIndex: 10,
+      zIndex:
+        10,
 
-      width: 44,
+      width:
+        44,
 
-      height: 44,
+      height:
+        44,
 
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      borderWidth: 1,
-
-      borderRadius: 22,
-
-      shadowColor: '#000000',
-
-      shadowOffset: {
-        width: 0,
-
-        height: 3,
-      },
-
-      shadowOpacity: 0.08,
-
-      shadowRadius: 6,
-
-      elevation: 3,
-    },
-
-    scrollContent: {
-      flexGrow: 1,
+      alignItems:
+        'center',
 
       justifyContent:
         'center',
 
-      paddingHorizontal: 26,
+      borderWidth:
+        1,
+
+      borderRadius:
+        22,
+
+      shadowColor:
+        '#000000',
+
+      shadowOffset: {
+        width:
+          0,
+
+        height:
+          3,
+      },
+
+      shadowOpacity:
+        0.08,
+
+      shadowRadius:
+        6,
+
+      elevation:
+        3,
+    },
+
+    scrollContent: {
+      flexGrow:
+        1,
+
+      justifyContent:
+        'center',
+
+      paddingHorizontal:
+        26,
 
       paddingTop:
-        Platform.OS === 'android'
+        Platform.OS ===
+        'android'
           ? 86
           : 76,
 
       paddingBottom:
-        Platform.OS === 'android'
+        Platform.OS ===
+        'android'
           ? 40
           : 30,
     },
@@ -645,231 +718,321 @@ const styles =
      * IDENTIDADE
      */
     logoContainer: {
-      width: '100%',
+      width:
+        '100%',
 
-      alignItems: 'center',
+      alignItems:
+        'center',
     },
 
     logoSymbol: {
-      width: 84,
+      width:
+        84,
 
-      height: 84,
+      height:
+        84,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      marginBottom: 16,
+      marginBottom:
+        16,
 
-      borderWidth: 1,
+      borderWidth:
+        1,
 
-      borderRadius: 42,
+      borderRadius:
+        42,
     },
 
     heartContainer: {
-      width: 58,
+      width:
+        58,
 
-      height: 58,
+      height:
+        58,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      borderRadius: 29,
+      borderRadius:
+        29,
 
       shadowOffset: {
-        width: 0,
+        width:
+          0,
 
-        height: 7,
+        height:
+          7,
       },
 
-      shadowOpacity: 0.22,
+      shadowOpacity:
+        0.22,
 
-      shadowRadius: 10,
+      shadowRadius:
+        10,
 
-      elevation: 6,
+      elevation:
+        6,
     },
 
     logo: {
-      fontSize: 37,
+      fontSize:
+        37,
 
-      lineHeight: 45,
+      lineHeight:
+        45,
 
-      fontWeight: '900',
+      fontWeight:
+        '900',
 
-      letterSpacing: 0.3,
+      letterSpacing:
+        0.3,
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
 
     title: {
-      marginTop: 28,
+      marginTop:
+        28,
 
-      fontSize: 24,
+      fontSize:
+        24,
 
-      lineHeight: 31,
+      lineHeight:
+        31,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
 
     subtitle: {
-      maxWidth: 310,
+      maxWidth:
+        310,
 
-      marginTop: 9,
+      marginTop:
+        9,
 
-      fontSize: 14,
+      fontSize:
+        14,
 
-      lineHeight: 21,
+      lineHeight:
+        21,
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
 
     /*
      * FORMULÁRIO
      */
     form: {
-      width: '100%',
+      width:
+        '100%',
 
-      marginTop: 34,
+      marginTop:
+        34,
     },
 
     fieldContainer: {
-      width: '100%',
+      width:
+        '100%',
 
-      marginBottom: 17,
+      marginBottom:
+        17,
     },
 
     label: {
-      marginBottom: 8,
+      marginBottom:
+        8,
 
-      marginLeft: 3,
+      marginLeft:
+        3,
 
-      fontSize: 14,
+      fontSize:
+        14,
 
-      lineHeight: 20,
+      lineHeight:
+        20,
 
-      fontWeight: '700',
+      fontWeight:
+        '700',
     },
 
     forgotPasswordButton: {
-      alignSelf: 'flex-end',
+      alignSelf:
+        'flex-end',
 
-      minHeight: 36,
+      minHeight:
+        36,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      marginTop: -3,
+      marginTop:
+        -3,
 
-      marginBottom: 18,
+      marginBottom:
+        18,
 
-      paddingHorizontal: 3,
+      paddingHorizontal:
+        3,
     },
 
     forgotPasswordText: {
-      fontSize: 13,
+      fontSize:
+        13,
 
-      lineHeight: 19,
+      lineHeight:
+        19,
 
-      fontWeight: '700',
+      fontWeight:
+        '700',
     },
 
     /*
      * BOTÃO ENTRAR
      */
     loginButton: {
-      width: '100%',
+      width:
+        '100%',
 
-      minHeight: 56,
+      minHeight:
+        56,
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      paddingHorizontal: 22,
+      paddingHorizontal:
+        22,
 
-      borderRadius: 28,
+      borderRadius:
+        28,
 
       shadowOffset: {
-        width: 0,
+        width:
+          0,
 
-        height: 8,
+        height:
+          8,
       },
 
-      shadowOpacity: 0.22,
+      shadowOpacity:
+        0.22,
 
-      shadowRadius: 12,
+      shadowRadius:
+        12,
 
-      elevation: 7,
+      elevation:
+        7,
     },
 
     loginButtonText: {
-      color: '#ffffff',
+      color:
+        '#ffffff',
 
-      fontSize: 17,
+      fontSize:
+        17,
 
-      lineHeight: 23,
+      lineHeight:
+        23,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
 
     loginButtonIcon: {
-      marginLeft: 10,
+      marginLeft:
+        10,
     },
 
     /*
      * RODAPÉ
      */
     footer: {
-      width: '100%',
+      width:
+        '100%',
 
-      flexDirection: 'row',
+      flexDirection:
+        'row',
 
-      flexWrap: 'wrap',
+      flexWrap:
+        'wrap',
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      marginTop: 28,
+      marginTop:
+        28,
 
-      paddingHorizontal: 8,
+      paddingHorizontal:
+        8,
     },
 
     footerText: {
-      fontSize: 13,
+      fontSize:
+        13,
 
-      lineHeight: 20,
+      lineHeight:
+        20,
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
 
     registerButton: {
-      minHeight: 34,
+      minHeight:
+        34,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
-      justifyContent: 'center',
+      justifyContent:
+        'center',
 
-      marginLeft: 5,
+      marginLeft:
+        5,
 
-      paddingHorizontal: 3,
+      paddingHorizontal:
+        3,
     },
 
     registerText: {
-      fontSize: 13,
+      fontSize:
+        13,
 
-      lineHeight: 20,
+      lineHeight:
+        20,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
   });

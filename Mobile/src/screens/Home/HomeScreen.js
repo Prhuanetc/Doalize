@@ -1,5 +1,6 @@
 import React, {
   useCallback,
+  useRef,
   useState,
 } from 'react';
 
@@ -11,6 +12,8 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
+  TouchableOpacity,
+  Share,
 } from 'react-native';
 
 import {
@@ -21,20 +24,7 @@ import {
   useFocusEffect,
 } from '@react-navigation/native';
 
-/*
- * FileSystem é utilizado para baixar
- * temporariamente a imagem do post
- * para o cache do aplicativo.
- */
 import * as FileSystem from 'expo-file-system/legacy';
-
-/*
- * react-native-share permite compartilhar
- * texto e arquivo no mesmo menu nativo.
- */
-import {
-  Share,
-} from 'react-native';
 
 import Header from '../../components/Header';
 
@@ -53,6 +43,196 @@ import {
 } from '../../utils/imageHelper';
 
 import styles from './styles';
+
+/*
+ * EXTRAIR PUBLICAÇÕES
+ * DA RESPOSTA DA API
+ *
+ * Formatos suportados:
+ *
+ * [...]
+ *
+ * {
+ *   posts: [...]
+ * }
+ *
+ * {
+ *   data: [...]
+ * }
+ *
+ * {
+ *   data: {
+ *     posts: [...]
+ *   }
+ * }
+ *
+ * {
+ *   results: [...]
+ * }
+ */
+function extractPostsFromResponse(
+  responseData
+) {
+  if (
+    Array.isArray(
+      responseData
+    )
+  ) {
+    return responseData;
+  }
+
+  if (
+    Array.isArray(
+      responseData?.posts
+    )
+  ) {
+    return responseData.posts;
+  }
+
+  if (
+    Array.isArray(
+      responseData?.data
+    )
+  ) {
+    return responseData.data;
+  }
+
+  if (
+    Array.isArray(
+      responseData
+        ?.data
+        ?.posts
+    )
+  ) {
+    return responseData
+      .data
+      .posts;
+  }
+
+  if (
+    Array.isArray(
+      responseData?.results
+    )
+  ) {
+    return responseData.results;
+  }
+
+  return [];
+}
+
+/*
+ * NORMALIZAR UMA PUBLICAÇÃO
+ *
+ * Caso normalizePost não reconheça
+ * algum formato, os dados originais
+ * da publicação serão preservados.
+ */
+function normalizeFeedPost(
+  post
+) {
+  if (
+    !post ||
+    typeof post !==
+      'object'
+  ) {
+    return null;
+  }
+
+  let normalizedPost =
+    null;
+
+  try {
+    normalizedPost =
+      normalizePost(
+        post
+      );
+  } catch (error) {
+    console.log(
+      'ERRO AO NORMALIZAR PUBLICAÇÃO:',
+      {
+        postId:
+          post?.id,
+
+        message:
+          error.message,
+      }
+    );
+  }
+
+  const safePost =
+    normalizedPost &&
+    typeof normalizedPost ===
+      'object'
+      ? normalizedPost
+      : post;
+
+  let normalizedImages =
+    [];
+
+  try {
+    normalizedImages =
+      parsePostImages(
+        safePost?.images ||
+        post?.images ||
+        safePost?.image ||
+        post?.image
+      );
+  } catch (error) {
+    console.log(
+      'ERRO AO NORMALIZAR IMAGENS:',
+      {
+        postId:
+          post?.id,
+
+        message:
+          error.message,
+      }
+    );
+  }
+
+  return {
+    ...post,
+    ...safePost,
+
+    id:
+      safePost?.id ??
+      post?.id,
+
+    images:
+      normalizedImages,
+
+    user: {
+      ...post?.user,
+      ...safePost?.user,
+    },
+
+    promoted:
+      Boolean(
+        safePost?.promoted ??
+        post?.promoted
+      ),
+
+    promoted_by_me:
+      Boolean(
+        safePost
+          ?.promoted_by_me ??
+        post
+          ?.promoted_by_me
+      ),
+
+    promotion_count:
+      Math.max(
+        0,
+        Number(
+          safePost
+            ?.promotion_count ??
+          post
+            ?.promotion_count ??
+          0
+        )
+      ),
+  };
+}
 
 export default function HomeScreen({
   navigation,
@@ -77,9 +257,24 @@ export default function HomeScreen({
   ] = useState(false);
 
   const [
+    feedError,
+    setFeedError,
+  ] = useState('');
+
+  const [
     sharingPostId,
     setSharingPostId,
   ] = useState(null);
+
+  /*
+   * REFERÊNCIA DA QUANTIDADE
+   * DE PUBLICAÇÕES
+   *
+   * Evita criar um ciclo de
+   * recarregamento no useFocusEffect.
+   */
+  const postsCountRef =
+    useRef(0);
 
   /*
    * CARREGAR PUBLICAÇÕES
@@ -91,103 +286,123 @@ export default function HomeScreen({
         showRefreshLoading = false,
       } = {}) => {
         try {
+          setFeedError('');
+
           if (
             showInitialLoading
           ) {
-            setLoading(true);
+            setLoading(
+              true
+            );
           }
 
           if (
             showRefreshLoading
           ) {
-            setRefreshing(true);
+            setRefreshing(
+              true
+            );
           }
+
+          console.log(
+            'CARREGANDO FEED:',
+            {
+              baseURL:
+                api.defaults
+                  .baseURL,
+
+              endpoint:
+                '/posts',
+
+              hasAuthorization:
+                Boolean(
+                  api.defaults
+                    .headers
+                    .Authorization
+                ),
+            }
+          );
 
           const response =
             await api.get(
               '/posts'
             );
 
+          const responseData =
+            response.data;
+
           const receivedPosts =
-            Array.isArray(
-              response.data
-            )
-              ? response.data
-              : Array.isArray(
-                  response.data
-                    ?.posts
+            extractPostsFromResponse(
+              responseData
+            );
+
+          console.log(
+            'RESPOSTA BRUTA DO FEED:',
+            {
+              status:
+                response.status,
+
+              responseType:
+                Array.isArray(
+                  responseData
                 )
-                ? response.data
-                    .posts
-                : [];
+                  ? 'array'
+                  : typeof responseData,
+
+              receivedCount:
+                receivedPosts.length,
+
+              hasPostsProperty:
+                Array.isArray(
+                  responseData?.posts
+                ),
+
+              hasDataArray:
+                Array.isArray(
+                  responseData?.data
+                ),
+
+              hasNestedPosts:
+                Array.isArray(
+                  responseData
+                    ?.data
+                    ?.posts
+                ),
+
+              hasResults:
+                Array.isArray(
+                  responseData?.results
+                ),
+            }
+          );
 
           const normalizedPosts =
             receivedPosts
               .map(
-                (post) => {
-                  const normalized =
-                    normalizePost(
-                      post
-                    );
-
-                  if (!normalized) {
-                    return null;
-                  }
-
-                  return {
-                    ...normalized,
-
-                    /*
-                     * Preserva os dados extras
-                     * da resposta da API.
-                     */
-                    user: {
-                      ...post?.user,
-                      ...normalized?.user,
-                    },
-
-                    promoted:
-                      Boolean(
-                        post?.promoted
-                      ),
-
-                    promoted_by_me:
-                      Boolean(
-                        post
-                          ?.promoted_by_me
-                      ),
-
-                    promotion_count:
-                      Math.max(
-                        0,
-                        Number(
-                          post
-                            ?.promotion_count ||
-                            0
-                        )
-                      ),
-                  };
-                }
+                normalizeFeedPost
               )
-              .filter(Boolean);
+              .filter(
+                Boolean
+              );
 
           console.log(
-            'FEED CARREGADO:',
+            'FEED NORMALIZADO:',
             normalizedPosts.map(
               (post) => ({
                 id:
                   post?.id,
 
+                summary:
+                  post?.summary,
+
                 imageCount:
                   Array.isArray(
                     post?.images
                   )
-                    ? post.images
+                    ? post
+                        .images
                         .length
                     : 0,
-
-                summary:
-                  post?.summary,
 
                 responsible:
                   post?.user
@@ -207,15 +422,27 @@ export default function HomeScreen({
             )
           );
 
+          postsCountRef.current =
+            normalizedPosts.length;
+
           setPosts(
             normalizedPosts
           );
         } catch (error) {
+          const errorMessage =
+            error.response
+              ?.data
+              ?.message ||
+            'Não foi possível carregar o Feed.';
+
           console.log(
             'ERRO AO CARREGAR FEED:',
             {
               message:
                 error.message,
+
+              code:
+                error.code,
 
               status:
                 error.response
@@ -224,17 +451,41 @@ export default function HomeScreen({
               response:
                 error.response
                   ?.data,
+
+              baseURL:
+                api.defaults
+                  .baseURL,
+
+              hasAuthorization:
+                Boolean(
+                  api.defaults
+                    .headers
+                    .Authorization
+                ),
             }
           );
 
-          Alert.alert(
-            'Erro',
-            error.response?.data
-              ?.message ||
-              'Não foi possível carregar o Feed.'
+          setFeedError(
+            errorMessage
           );
+
+          /*
+           * Não limpa publicações que
+           * já estavam carregadas.
+           */
+          if (
+            postsCountRef.current ===
+            0
+          ) {
+            Alert.alert(
+              'Erro ao carregar',
+              errorMessage
+            );
+          }
         } finally {
-          setLoading(false);
+          setLoading(
+            false
+          );
 
           setRefreshing(
             false
@@ -246,25 +497,32 @@ export default function HomeScreen({
 
   /*
    * RECARREGAR O FEED QUANDO
-   * A HOME RECEBER FOCO.
+   * A HOME RECEBER FOCO
    */
   useFocusEffect(
     useCallback(() => {
       loadPosts({
         showInitialLoading:
-          posts.length === 0,
+          postsCountRef.current ===
+          0,
       });
     }, [
       loadPosts,
-      posts.length,
     ])
   );
 
   /*
    * ATUALIZAR ARRASTANDO
-   * PARA BAIXO.
+   * PARA BAIXO
    */
   function handleRefresh() {
+    if (
+      refreshing ||
+      loading
+    ) {
+      return;
+    }
+
     loadPosts({
       showRefreshLoading:
         true,
@@ -272,11 +530,32 @@ export default function HomeScreen({
   }
 
   /*
-   * ABRIR DETALHES.
+   * TENTAR CARREGAR NOVAMENTE
+   */
+  function handleRetry() {
+    if (
+      loading ||
+      refreshing
+    ) {
+      return;
+    }
+
+    loadPosts({
+      showInitialLoading:
+        true,
+    });
+  }
+
+  /*
+   * ABRIR DETALHES
    */
   function handleOpenPost(
     post
   ) {
+    if (!post) {
+      return;
+    }
+
     navigation.navigate(
       'DetailsScreen',
       {
@@ -286,7 +565,8 @@ export default function HomeScreen({
   }
 
   /*
-   * IDENTIFICAR A EXTENSÃO DA IMAGEM.
+   * IDENTIFICAR EXTENSÃO
+   * DA IMAGEM
    */
   function getImageExtension(
     imageUrl
@@ -332,25 +612,8 @@ export default function HomeScreen({
   }
 
   /*
-   * IDENTIFICAR O MIME TYPE.
-   */
-  function getImageMimeType(
-    extension
-  ) {
-    if (extension === 'png') {
-      return 'image/png';
-    }
-
-    if (extension === 'webp') {
-      return 'image/webp';
-    }
-
-    return 'image/jpeg';
-  }
-
-  /*
-   * MONTAR O TEXTO DO
-   * COMPARTILHAMENTO.
+   * CRIAR TEXTO PARA
+   * COMPARTILHAMENTO
    */
   function createShareMessage(
     post
@@ -376,15 +639,6 @@ export default function HomeScreen({
         ? post.description.trim()
         : '';
 
-    /*
-     * Preferência:
-     *
-     * contact_email
-     * email
-     *
-     * Se nenhum estiver disponível,
-     * orienta o contato pelo Doalize.
-     */
     const contactEmail =
       typeof post?.user
         ?.contact_email ===
@@ -418,7 +672,8 @@ export default function HomeScreen({
 
     if (
       description &&
-      description !== summary
+      description !==
+        summary
     ) {
       messageParts.push(
         `Descrição:\n${description}`
@@ -449,15 +704,130 @@ export default function HomeScreen({
   }
 
   /*
-   * COMPARTILHAR IMAGEM REAL
-   * JUNTO COM O TEXTO.
+   * PREPARAR IMAGEM PARA
+   * COMPARTILHAMENTO
    *
-   * Não inclui:
+   * O Share nativo aceita o URI
+   * em plataformas compatíveis.
    *
-   * - número de promoções;
-   * - URL visível da imagem;
-   * - caminhos internos;
-   * - dados privados adicionais.
+   * O texto permanece disponível
+   * mesmo que a imagem não seja aceita
+   * pelo aplicativo escolhido.
+   */
+  async function prepareImageForShare(
+    post
+  ) {
+    let parsedImages =
+      [];
+
+    try {
+      parsedImages =
+        parsePostImages(
+          post?.images ||
+          post?.image
+        );
+    } catch (error) {
+      console.log(
+        'ERRO AO IDENTIFICAR IMAGEM PARA COMPARTILHAR:',
+        {
+          postId:
+            post?.id,
+
+          message:
+            error.message,
+        }
+      );
+
+      return null;
+    }
+
+    if (
+      parsedImages.length ===
+      0
+    ) {
+      return null;
+    }
+
+    const selectedImage =
+      parsedImages[0];
+
+    const imageUrl =
+      resolveImageUrl(
+        selectedImage
+      );
+
+    if (!imageUrl) {
+      return null;
+    }
+
+    const extension =
+      getImageExtension(
+        imageUrl
+      );
+
+    const cacheDirectory =
+      FileSystem
+        .cacheDirectory;
+
+    if (!cacheDirectory) {
+      return null;
+    }
+
+    const temporaryFileName =
+      `doalize-post-${post.id}.${extension}`;
+
+    const temporaryFileUri =
+      `${cacheDirectory}${temporaryFileName}`;
+
+    const previousFile =
+      await FileSystem
+        .getInfoAsync(
+          temporaryFileUri
+        );
+
+    if (
+      previousFile.exists
+    ) {
+      await FileSystem
+        .deleteAsync(
+          temporaryFileUri,
+          {
+            idempotent:
+              true,
+          }
+        );
+    }
+
+    console.log(
+      'BAIXANDO IMAGEM PARA COMPARTILHAR:',
+      {
+        postId:
+          post.id,
+
+        imageUrl,
+
+        temporaryFileUri,
+      }
+    );
+
+    const downloadResult =
+      await FileSystem
+        .downloadAsync(
+          imageUrl,
+          temporaryFileUri
+        );
+
+    if (
+      !downloadResult?.uri
+    ) {
+      return null;
+    }
+
+    return downloadResult.uri;
+  }
+
+  /*
+   * COMPARTILHAR PUBLICAÇÃO
    */
   async function handleShare(
     post
@@ -472,7 +842,8 @@ export default function HomeScreen({
     }
 
     if (
-      sharingPostId !== null
+      sharingPostId !==
+      null
     ) {
       return;
     }
@@ -482,183 +853,118 @@ export default function HomeScreen({
         post.id
       );
 
-      const parsedImages =
-        parsePostImages(
-          post?.images
-        );
-
-      if (
-        parsedImages.length ===
-        0
-      ) {
-        Alert.alert(
-          'Imagem necessária',
-          'Esta publicação não possui uma imagem para compartilhar.'
-        );
-
-        return;
-      }
-
-      /*
-       * Compartilha a primeira imagem
-       * da publicação.
-       */
-      const selectedImage =
-        parsedImages[0];
-
-      const imageUrl =
-        resolveImageUrl(
-          selectedImage
-        );
-
-      if (!imageUrl) {
-        throw new Error(
-          'Não foi possível localizar a imagem da publicação.'
-        );
-      }
-
-      const extension =
-        getImageExtension(
-          imageUrl
-        );
-
-      const mimeType =
-        getImageMimeType(
-          extension
-        );
-
-      /*
-       * O nome inclui o ID para evitar
-       * conflito entre publicações.
-       */
-      const temporaryFileName =
-        `doalize-post-${post.id}.${extension}`;
-
-      const temporaryFileUri =
-        `${FileSystem.cacheDirectory}${temporaryFileName}`;
-
-      /*
-       * Remove a versão anterior do
-       * cache, caso exista.
-       */
-      const previousFile =
-        await FileSystem
-          .getInfoAsync(
-            temporaryFileUri
-          );
-
-      if (
-        previousFile.exists
-      ) {
-        await FileSystem
-          .deleteAsync(
-            temporaryFileUri,
-            {
-              idempotent: true,
-            }
-          );
-      }
-
-      console.log(
-        'BAIXANDO IMAGEM PARA COMPARTILHAR:',
-        {
-          postId:
-            post.id,
-
-          imageUrl,
-
-          temporaryFileUri,
-
-          mimeType,
-        }
-      );
-
-      const downloadResult =
-        await FileSystem
-          .downloadAsync(
-            imageUrl,
-            temporaryFileUri
-          );
-
-      if (
-        !downloadResult?.uri
-      ) {
-        throw new Error(
-          'A imagem não pôde ser preparada para compartilhamento.'
-        );
-      }
-
       const shareMessage =
         createShareMessage(
           post
         );
 
-      /*
-       * Abre um único menu de
-       * compartilhamento contendo:
-       *
-       * - imagem real;
-       * - resumo;
-       * - descrição;
-       * - responsável;
-       * - contato;
-       * - identificação do Doalize.
-       */
-      await Share.open({
-        title:
-          'Compartilhar publicação do Doalize',
+      let imageUri =
+        null;
 
-        subject:
+      try {
+        imageUri =
+          await prepareImageForShare(
+            post
+          );
+      } catch (imageError) {
+        /*
+         * Se a imagem não puder ser
+         * preparada, compartilha o texto.
+         */
+        console.log(
+          'NÃO FOI POSSÍVEL PREPARAR A IMAGEM:',
+          {
+            postId:
+              post.id,
+
+            message:
+              imageError.message,
+          }
+        );
+      }
+
+      const shareContent = {
+        title:
           'Publicação do Doalize',
 
         message:
           shareMessage,
+      };
 
-        url:
-          downloadResult.uri,
+      /*
+       * O URI local é incluído quando
+       * estiver disponível.
+       */
+      if (imageUri) {
+        shareContent.url =
+          imageUri;
+      }
 
-        type:
-          mimeType,
+      const result =
+        await Share.share(
+          shareContent,
+          {
+            dialogTitle:
+              'Compartilhar publicação do Doalize',
 
-        filename:
-          temporaryFileName,
-
-        failOnCancel:
-          false,
-
-        useInternalStorage:
-          true,
-      });
+            subject:
+              'Publicação do Doalize',
+          }
+        );
 
       console.log(
-        'MENU DE COMPARTILHAMENTO ABERTO:',
+        'RESULTADO DO COMPARTILHAMENTO:',
         {
           postId:
             post.id,
 
-          localImage:
-            downloadResult.uri,
+          action:
+            result?.action,
+
+          activityType:
+            result?.activityType,
+
+          imageIncluded:
+            Boolean(
+              imageUri
+            ),
         }
       );
     } catch (error) {
+      const errorMessage =
+        String(
+          error?.message ||
+          ''
+        ).toLowerCase();
+
+      const canceled =
+        errorMessage.includes(
+          'cancel'
+        ) ||
+        errorMessage.includes(
+          'dismiss'
+        );
+
       console.log(
         'ERRO AO COMPARTILHAR PUBLICAÇÃO:',
         {
           postId:
             post?.id,
 
+          canceled,
+
           message:
             error.message,
-
-          error,
         }
       );
 
-      Alert.alert(
-        'Erro',
-        error.message ||
-          'Não foi possível compartilhar a publicação.'
-      );
+      if (!canceled) {
+        Alert.alert(
+          'Erro',
+          error.message ||
+            'Não foi possível compartilhar a publicação.'
+        );
+      }
     } finally {
       setSharingPostId(
         null
@@ -667,7 +973,8 @@ export default function HomeScreen({
   }
 
   /*
-   * PROMOVER OU REMOVER PROMOÇÃO.
+   * PROMOVER OU REMOVER
+   * A PROMOÇÃO
    */
   async function handlePromote(
     post
@@ -688,7 +995,8 @@ export default function HomeScreen({
         );
 
       const responseData =
-        response.data || {};
+        response.data ||
+        {};
 
       const promoted =
         Boolean(
@@ -708,7 +1016,7 @@ export default function HomeScreen({
           Number(
             responseData
               .promotion_count ||
-              0
+            0
           )
         );
 
@@ -720,7 +1028,9 @@ export default function HomeScreen({
                 Number(
                   currentPost.id
                 ) !==
-                Number(post.id)
+                Number(
+                  post.id
+                )
               ) {
                 return currentPost;
               }
@@ -772,7 +1082,8 @@ export default function HomeScreen({
 
       Alert.alert(
         'Erro',
-        error.response?.data
+        error.response
+          ?.data
           ?.message ||
           'Não foi possível alterar a promoção.'
       );
@@ -780,39 +1091,77 @@ export default function HomeScreen({
   }
 
   /*
-   * RENDERIZAR ITEM.
+   * RENDERIZAR PUBLICAÇÃO
    */
   function renderItem({
     item,
   }) {
     return (
-      <PostCard
-        post={item}
-        onPress={() =>
-          handleOpenPost(
+      <View>
+        <PostCard
+          post={
             item
-          )
-        }
-        onShare={() =>
-          handleShare(
-            item
-          )
-        }
-        onPromote={() =>
-          handlePromote(
-            item
-          )
-        }
-      />
+          }
+          onPress={() =>
+            handleOpenPost(
+              item
+            )
+          }
+          onShare={() =>
+            handleShare(
+              item
+            )
+          }
+          onPromote={() =>
+            handlePromote(
+              item
+            )
+          }
+        />
+
+        {sharingPostId ===
+        item?.id ? (
+          <View
+            style={[
+              localStyles.sharingIndicator,
+              {
+                backgroundColor:
+                  theme.card,
+              },
+            ]}
+          >
+            <ActivityIndicator
+              size="small"
+              color={
+                theme.primary
+              }
+            />
+
+            <Text
+              style={[
+                localStyles.sharingText,
+                {
+                  color:
+                    theme
+                      .textSecondary,
+                },
+              ]}
+            >
+              Preparando compartilhamento...
+            </Text>
+          </View>
+        ) : null}
+      </View>
     );
   }
 
   /*
-   * CARREGAMENTO INICIAL.
+   * CARREGAMENTO INICIAL
    */
   if (
     loading &&
-    posts.length === 0
+    posts.length ===
+      0
   ) {
     return (
       <View
@@ -872,14 +1221,16 @@ export default function HomeScreen({
       />
 
       <FlatList
-        data={posts}
+        data={
+          posts
+        }
         keyExtractor={(
           item,
           index
         ) =>
           String(
             item?.id ??
-              index
+            index
           )
         }
         renderItem={
@@ -891,7 +1242,8 @@ export default function HomeScreen({
         contentContainerStyle={[
           styles.feed,
 
-          posts.length === 0
+          posts.length ===
+          0
             ? localStyles.emptyList
             : null,
         ]}
@@ -921,7 +1273,11 @@ export default function HomeScreen({
             }
           >
             <Ionicons
-              name="newspaper-outline"
+              name={
+                feedError
+                  ? 'cloud-offline-outline'
+                  : 'newspaper-outline'
+              }
               size={58}
               color={
                 theme
@@ -938,7 +1294,9 @@ export default function HomeScreen({
                 },
               ]}
             >
-              Nenhuma publicação
+              {feedError
+                ? 'Não foi possível carregar'
+                : 'Nenhuma publicação'}
             </Text>
 
             <Text
@@ -951,8 +1309,57 @@ export default function HomeScreen({
                 },
               ]}
             >
-              As publicações criadas pelos usuários aparecerão aqui.
+              {feedError
+                ? feedError
+                : 'As publicações criadas pelos usuários aparecerão aqui.'}
             </Text>
+
+            {feedError ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={
+                  handleRetry
+                }
+                disabled={
+                  loading
+                }
+                style={[
+                  localStyles.retryButton,
+                  {
+                    backgroundColor:
+                      theme.primary,
+
+                    opacity:
+                      loading
+                        ? 0.6
+                        : 1,
+                  },
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#ffffff"
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="refresh-outline"
+                      size={20}
+                      color="#ffffff"
+                    />
+
+                    <Text
+                      style={
+                        localStyles.retryText
+                      }
+                    >
+                      Tentar novamente
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : null}
           </View>
         }
       />
@@ -963,54 +1370,157 @@ export default function HomeScreen({
 const localStyles =
   StyleSheet.create({
     loadingContainer: {
-      flex: 1,
+      flex:
+        1,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
       justifyContent:
         'center',
     },
 
     loadingText: {
-      marginTop: 12,
+      marginTop:
+        12,
 
-      fontSize: 15,
+      fontSize:
+        15,
     },
 
     emptyList: {
-      flexGrow: 1,
+      flexGrow:
+        1,
     },
 
     emptyContainer: {
-      flex: 1,
+      flex:
+        1,
 
-      alignItems: 'center',
+      alignItems:
+        'center',
 
       justifyContent:
         'center',
 
-      paddingHorizontal: 30,
+      paddingHorizontal:
+        30,
 
-      paddingBottom: 60,
+      paddingBottom:
+        60,
     },
 
     emptyTitle: {
-      marginTop: 16,
+      marginTop:
+        16,
 
-      fontSize: 20,
+      fontSize:
+        20,
 
-      fontWeight: '800',
+      fontWeight:
+        '800',
 
-      textAlign: 'center',
+      textAlign:
+        'center',
     },
 
     emptyDescription: {
-      marginTop: 8,
+      maxWidth:
+        310,
 
-      fontSize: 14,
+      marginTop:
+        8,
 
-      lineHeight: 21,
+      fontSize:
+        14,
 
-      textAlign: 'center',
+      lineHeight:
+        21,
+
+      textAlign:
+        'center',
+    },
+
+    retryButton: {
+      minWidth:
+        190,
+
+      minHeight:
+        48,
+
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      marginTop:
+        22,
+
+      paddingHorizontal:
+        20,
+
+      borderRadius:
+        24,
+
+      elevation:
+        4,
+    },
+
+    retryText: {
+      marginLeft:
+        8,
+
+      color:
+        '#ffffff',
+
+      fontSize:
+        14,
+
+      fontWeight:
+        '800',
+    },
+
+    sharingIndicator: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      alignSelf:
+        'center',
+
+      marginTop:
+        -8,
+
+      marginBottom:
+        12,
+
+      paddingHorizontal:
+        14,
+
+      paddingVertical:
+        8,
+
+      borderRadius:
+        18,
+
+      elevation:
+        2,
+    },
+
+    sharingText: {
+      marginLeft:
+        8,
+
+      fontSize:
+        12,
+
+      lineHeight:
+        18,
     },
   });

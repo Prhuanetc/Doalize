@@ -11,6 +11,8 @@ import WelcomeScreen from '../screens/Auth/WelcomeScreen';
 
 import LoginScreen from '../screens/Auth/LoginScreen';
 
+import LoginVerificationScreen from '../screens/Auth/LoginVerificationScreen';
+
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 
 import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
@@ -19,8 +21,15 @@ import ResetPasswordScreen from '../screens/Auth/ResetPasswordScreen';
 
 import TermsPrivacyScreen from '../screens/Auth/TermsPrivacyScreen';
 
+import SettingsScreen from '../screens/Settings/SettingsScreen';
+
+import EmailChangeScreen from '../screens/Settings/EmailChangeScreen';
+
+import TwoFactorSettingsScreen from '../screens/Settings/TwoFactorSettingsScreen';
+
 /*
- * NAVEGADOR
+ * NAVEGADOR DAS ROTAS
+ * DE AUTENTICAÇÃO
  */
 const Stack =
   createNativeStackNavigator();
@@ -56,6 +65,26 @@ export default function AuthRoutes() {
         }
       />
 
+      {/* CONFIRMAÇÃO DO LOGIN EM DUAS ETAPAS */}
+      <Stack.Screen
+        name="LoginVerificationScreen"
+        component={
+          LoginVerificationScreen
+        }
+        options={{
+          /*
+           * Impede que o gesto do sistema
+           * volte sem limpar corretamente
+           * o desafio temporário.
+           *
+           * A própria tela possui um
+           * botão seguro para cancelar.
+           */
+          gestureEnabled:
+            false,
+        }}
+      />
+
       {/* CADASTRO */}
       <Stack.Screen
         name="RegisterScreen"
@@ -76,7 +105,7 @@ export default function AuthRoutes() {
         }}
       />
 
-      {/* ESQUECI MINHA SENHA */}
+      {/* SOLICITAR CÓDIGO DE SENHA */}
       <Stack.Screen
         name="ForgotPasswordScreen"
         component={

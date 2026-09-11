@@ -1,29 +1,35 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 import User from '../models/User.js';
 
+import TwoFactorVerification from '../models/TwoFactorVerification.js';
+
+import {
+  sendPasswordCode,
+} from '../services/emailService.js';
+
 dotenv.config();
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH =
+  6;
 
 const DEFAULT_USER_PHOTO =
   '/uploads/usuarioimage.png';
 
-/*
- * VERSÕES VIGENTES
- *
- * Devem ser iguais às versões usadas em:
- *
- * Mobile/src/screens/Auth/RegisterScreen.js
- * Mobile/src/screens/Auth/TermsPrivacyScreen.js
- */
 const CURRENT_TERMS_VERSION =
   '1.0';
 
 const CURRENT_PRIVACY_VERSION =
   '1.0';
+
+const TWO_FACTOR_CODE_EXPIRATION_MINUTES =
+  10;
+
+const TWO_FACTOR_MAX_ATTEMPTS =
+  5;
 
 /*
  * IDENTIFICAR CONTA ANONIMIZADA
@@ -32,7 +38,8 @@ function isAnonymousEmail(
   email
 ) {
   return (
-    typeof email === 'string' &&
+    typeof email ===
+      'string' &&
     /^conta-removida-\d+-[a-f0-9]+@doalize\.invalid$/i.test(
       email
     )
@@ -40,13 +47,32 @@ function isAnonymousEmail(
 }
 
 /*
- * VALIDAR FORMATO DO E-MAIL
+ * NORMALIZAR E-MAIL
+ */
+function normalizeEmail(
+  email
+) {
+  if (
+    typeof email !==
+    'string'
+  ) {
+    return '';
+  }
+
+  return email
+    .trim()
+    .toLowerCase();
+}
+
+/*
+ * VALIDAR E-MAIL
  */
 function isValidEmail(
   email
 ) {
   if (
-    typeof email !== 'string'
+    typeof email !==
+    'string'
   ) {
     return false;
   }
@@ -60,13 +86,14 @@ function isValidEmail(
 }
 
 /*
- * NORMALIZAR VERSÃO DE DOCUMENTO
+ * NORMALIZAR VERSÃO
  */
 function normalizeVersion(
   version
 ) {
   if (
-    typeof version !== 'string'
+    typeof version !==
+    'string'
   ) {
     return '';
   }
@@ -83,7 +110,8 @@ function validateDocumentsAcceptance({
   privacyVersion,
 }) {
   if (
-    termsAccepted !== true
+    termsAccepted !==
+    true
   ) {
     return {
       valid:
@@ -168,7 +196,7 @@ function validateDocumentsAcceptance({
 }
 
 /*
- * CRIAR TOKEN JWT
+ * CRIAR TOKEN JWT DEFINITIVO
  */
 function createUserToken(
   userId
@@ -186,6 +214,9 @@ function createUserToken(
     {
       id:
         userId,
+
+      type:
+        'authentication',
     },
     jwtSecret,
     {
@@ -196,10 +227,45 @@ function createUserToken(
 }
 
 /*
- * FORMATAR RESPOSTA PÚBLICA
+ * GERAR CÓDIGO DE SEIS DÍGITOS
+ */
+function createTwoFactorCode() {
+  return String(
+    crypto.randomInt(
+      100000,
+      1000000
+    )
+  );
+}
+
+/*
+ * GERAR IDENTIFICADOR TEMPORÁRIO
+ * DO DESAFIO
+ */
+function createChallengeToken() {
+  return crypto
+    .randomBytes(48)
+    .toString('hex');
+}
+
+/*
+ * CRIAR HASH SHA-256
  *
- * A senha e o e-mail anonimizado
- * nunca são retornados por esta função.
+ * Usado para o token de desafio.
+ */
+function createSha256Hash(
+  value
+) {
+  return crypto
+    .createHash('sha256')
+    .update(
+      String(value)
+    )
+    .digest('hex');
+}
+
+/*
+ * FORMATAR RESPOSTA PÚBLICA
  */
 function formatUserResponse(
   user
@@ -224,8 +290,123 @@ function formatUserResponse(
     location:
       user.location,
 
+    two_factor_enabled:
+      Boolean(
+        user.two_factor_enabled
+      ),
+
     created_at:
       user.created_at,
+  };
+}
+
+/*
+ * CRIAR DESAFIO DE LOGIN
+ * COM VERIFICAÇÃO EM DUAS ETAPAS
+ */
+async function createLoginTwoFactorChallenge(
+  user
+) {
+  const code =
+    createTwoFactorCode();
+
+  const codeHash =
+    await bcrypt.hash(
+      code,
+      10
+    );
+
+  const challengeToken =
+    createChallengeToken();
+
+  const challengeTokenHash =
+    createSha256Hash(
+      challengeToken
+    );
+
+  const expiresAt =
+    new Date(
+      Date.now() +
+        TWO_FACTOR_CODE_EXPIRATION_MINUTES *
+          60 *
+          1000
+    );
+
+  /*
+   * INVALIDAR DESAFIOS
+   * ANTERIORES DE LOGIN
+   */
+  await TwoFactorVerification.update(
+    {
+      used:
+        true,
+    },
+    {
+      where: {
+        user_id:
+          user.id,
+
+        purpose:
+          'login',
+
+        used:
+          false,
+      },
+    }
+  );
+
+  const verification =
+    await TwoFactorVerification.create({
+      user_id:
+        user.id,
+
+      purpose:
+        'login',
+
+      code_hash:
+        codeHash,
+
+      challenge_token_hash:
+        challengeTokenHash,
+
+      expires_at:
+        expiresAt,
+
+      attempts:
+        0,
+
+      used:
+        false,
+    });
+
+  try {
+    /*
+     * Usa o serviço já existente para
+     * evitar importação quebrada.
+     *
+     * O código funciona normalmente.
+     * Depois o template poderá receber
+     * um assunto específico para login.
+     */
+    await sendPasswordCode({
+      email:
+        user.email,
+
+      name:
+        user.name,
+
+      code,
+    });
+  } catch (emailError) {
+    await verification.destroy();
+
+    throw emailError;
+  }
+
+  return {
+    challengeToken,
+
+    expiresAt,
   };
 }
 
@@ -250,25 +431,22 @@ class AuthController {
       } = req.body;
 
       const normalizedName =
-        typeof name === 'string'
+        typeof name ===
+          'string'
           ? name.trim()
           : '';
 
       const normalizedEmail =
-        typeof email === 'string'
-          ? email
-              .trim()
-              .toLowerCase()
-          : '';
+        normalizeEmail(
+          email
+        );
 
       const normalizedPassword =
-        typeof password === 'string'
+        typeof password ===
+          'string'
           ? password
           : '';
 
-      /*
-       * CAMPOS OBRIGATÓRIOS
-       */
       if (
         !normalizedName ||
         !normalizedEmail ||
@@ -282,13 +460,6 @@ class AuthController {
           });
       }
 
-      /*
-       * VALIDAR ACEITE
-       *
-       * Essa validação acontece também
-       * no backend para que não seja
-       * possível contorná-la pelo mobile.
-       */
       const acceptanceValidation =
         validateDocumentsAcceptance({
           termsAccepted,
@@ -310,12 +481,11 @@ class AuthController {
           });
       }
 
-      /*
-       * VALIDAR NOME
-       */
       if (
-        normalizedName.length < 2 ||
-        normalizedName.length > 120
+        normalizedName.length <
+          2 ||
+        normalizedName.length >
+          120
       ) {
         return res
           .status(400)
@@ -325,27 +495,10 @@ class AuthController {
           });
       }
 
-      /*
-       * VALIDAR E-MAIL
-       */
       if (
         !isValidEmail(
           normalizedEmail
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            message:
-              'Informe um e-mail válido.',
-          });
-      }
-
-      /*
-       * BLOQUEAR DOMÍNIO INTERNO
-       * DE ANONIMIZAÇÃO
-       */
-      if (
+        ) ||
         normalizedEmail.endsWith(
           '@doalize.invalid'
         )
@@ -358,9 +511,6 @@ class AuthController {
           });
       }
 
-      /*
-       * VALIDAR SENHA
-       */
       if (
         normalizedPassword.length <
         MIN_PASSWORD_LENGTH
@@ -373,15 +523,16 @@ class AuthController {
           });
       }
 
-      /*
-       * VERIFICAR E-MAIL DUPLICADO
-       */
       const userExists =
         await User.findOne({
           where: {
             email:
               normalizedEmail,
           },
+
+          attributes: [
+            'id',
+          ],
         });
 
       if (userExists) {
@@ -393,27 +544,15 @@ class AuthController {
           });
       }
 
-      /*
-       * CRIPTOGRAFAR SENHA
-       */
       const hashedPassword =
         await bcrypt.hash(
           normalizedPassword,
           10
         );
 
-      /*
-       * REGISTRAR O HORÁRIO OFICIAL
-       *
-       * Não utilizamos termsAcceptedAt
-       * enviado pelo celular.
-       */
       const officialAcceptedAt =
         new Date();
 
-      /*
-       * CRIAR USUÁRIO
-       */
       const user =
         await User.create({
           name:
@@ -434,6 +573,9 @@ class AuthController {
           location:
             null,
 
+          two_factor_enabled:
+            false,
+
           terms_accepted_at:
             officialAcceptedAt,
 
@@ -446,9 +588,6 @@ class AuthController {
               .privacyVersion,
         });
 
-      /*
-       * CRIAR TOKEN
-       */
       const token =
         createUserToken(
           user.id
@@ -517,9 +656,6 @@ class AuthController {
         }
       );
 
-      /*
-       * E-MAIL DUPLICADO
-       */
       if (
         error.name ===
         'SequelizeUniqueConstraintError'
@@ -532,9 +668,6 @@ class AuthController {
           });
       }
 
-      /*
-       * ERRO DE VALIDAÇÃO DO MODELO
-       */
       if (
         error.name ===
         'SequelizeValidationError'
@@ -546,32 +679,6 @@ class AuthController {
               error.errors?.[0]
                 ?.message ||
               'Os dados informados são inválidos.',
-          });
-      }
-
-      /*
-       * COLUNAS AINDA NÃO CRIADAS
-       */
-      if (
-        error.name ===
-          'SequelizeDatabaseError' &&
-        (
-          error.message?.includes(
-            'terms_accepted_at'
-          ) ||
-          error.message?.includes(
-            'terms_version'
-          ) ||
-          error.message?.includes(
-            'privacy_version'
-          )
-        )
-      ) {
-        return res
-          .status(500)
-          .json({
-            message:
-              'As colunas de aceite ainda não foram criadas no banco de dados. Reinicie o servidor para sincronizar as tabelas.',
           });
       }
 
@@ -603,20 +710,16 @@ class AuthController {
       } = req.body;
 
       const normalizedEmail =
-        typeof email === 'string'
-          ? email
-              .trim()
-              .toLowerCase()
-          : '';
+        normalizeEmail(
+          email
+        );
 
       const normalizedPassword =
-        typeof password === 'string'
+        typeof password ===
+          'string'
           ? password
           : '';
 
-      /*
-       * CAMPOS OBRIGATÓRIOS
-       */
       if (
         !normalizedEmail ||
         !normalizedPassword
@@ -629,9 +732,6 @@ class AuthController {
           });
       }
 
-      /*
-       * VALIDAR E-MAIL
-       */
       if (
         !isValidEmail(
           normalizedEmail
@@ -645,9 +745,6 @@ class AuthController {
           });
       }
 
-      /*
-       * BUSCAR USUÁRIO
-       */
       const user =
         await User.findOne({
           where: {
@@ -657,10 +754,7 @@ class AuthController {
         });
 
       /*
-       * RESPOSTA GENÉRICA
-       *
-       * Evita revelar se determinado
-       * endereço possui uma conta.
+       * Não revelar se o e-mail existe.
        */
       if (!user) {
         return res
@@ -671,22 +765,11 @@ class AuthController {
           });
       }
 
-      /*
-       * BLOQUEAR CONTA ANONIMIZADA
-       */
       if (
         isAnonymousEmail(
           user.email
         )
       ) {
-        console.log(
-          'TENTATIVA DE LOGIN EM CONTA ANONIMIZADA:',
-          {
-            userId:
-              user.id,
-          }
-        );
-
         return res
           .status(401)
           .json({
@@ -695,9 +778,6 @@ class AuthController {
           });
       }
 
-      /*
-       * COMPARAR SENHA
-       */
       const passwordMatch =
         await bcrypt.compare(
           normalizedPassword,
@@ -714,7 +794,66 @@ class AuthController {
       }
 
       /*
-       * CRIAR TOKEN
+       * LOGIN COM VERIFICAÇÃO
+       * EM DUAS ETAPAS
+       *
+       * Não cria JWT definitivo ainda.
+       */
+      if (
+        user.two_factor_enabled ===
+        true
+      ) {
+        let challenge;
+
+        try {
+          challenge =
+            await createLoginTwoFactorChallenge(
+              user
+            );
+        } catch (emailError) {
+          console.error(
+            'ERRO AO ENVIAR CÓDIGO DE LOGIN:',
+            {
+              userId:
+                user.id,
+
+              message:
+                emailError.message,
+
+              stack:
+                emailError.stack,
+            }
+          );
+
+          return res
+            .status(500)
+            .json({
+              message:
+                emailError.message ||
+                'Não foi possível enviar o código de verificação.',
+            });
+        }
+
+        return res
+          .status(200)
+          .json({
+            message:
+              'Código de verificação enviado para o e-mail cadastrado.',
+
+            requiresTwoFactor:
+              true,
+
+            challengeToken:
+              challenge
+                .challengeToken,
+
+            expiresInMinutes:
+              TWO_FACTOR_CODE_EXPIRATION_MINUTES,
+          });
+      }
+
+      /*
+       * LOGIN NORMAL
        */
       const token =
         createUserToken(
@@ -726,6 +865,9 @@ class AuthController {
         .json({
           message:
             'Login realizado com sucesso.',
+
+          requiresTwoFactor:
+            false,
 
           token,
 
@@ -767,8 +909,283 @@ class AuthController {
         });
     }
   }
+
+  /*
+   * CONFIRMAR VERIFICAÇÃO
+   * EM DUAS ETAPAS DO LOGIN
+   *
+   * POST /auth/two-factor/confirm
+   */
+  async confirmTwoFactorLogin(
+    req,
+    res
+  ) {
+    try {
+      const normalizedCode =
+        String(
+          req.body?.code ||
+          ''
+        ).trim();
+
+      const challengeToken =
+        typeof req.body
+          ?.challengeToken ===
+          'string'
+          ? req.body
+              .challengeToken
+              .trim()
+          : '';
+
+      if (
+        !normalizedCode ||
+        !challengeToken
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'Informe o código e o identificador da verificação.',
+          });
+      }
+
+      if (
+        !/^\d{6}$/.test(
+          normalizedCode
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'O código deve possuir 6 dígitos.',
+          });
+      }
+
+      /*
+       * O token recebido é transformado
+       * em hash antes da consulta.
+       */
+      const challengeTokenHash =
+        createSha256Hash(
+          challengeToken
+        );
+
+      const verification =
+        await TwoFactorVerification.findOne({
+          where: {
+            challenge_token_hash:
+              challengeTokenHash,
+
+            purpose:
+              'login',
+
+            used:
+              false,
+          },
+
+          order: [
+            [
+              'created_at',
+              'DESC',
+            ],
+          ],
+        });
+
+      if (!verification) {
+        return res
+          .status(400)
+          .json({
+            message:
+              'A solicitação de login é inválida ou já foi utilizada.',
+          });
+      }
+
+      if (
+        verification.attempts >=
+        TWO_FACTOR_MAX_ATTEMPTS
+      ) {
+        await verification.update({
+          used:
+            true,
+        });
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'Limite de tentativas atingido. Faça login novamente.',
+          });
+      }
+
+      if (
+        new Date(
+          verification.expires_at
+        ).getTime() <
+        Date.now()
+      ) {
+        await verification.update({
+          used:
+            true,
+        });
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'O código expirou. Faça login novamente.',
+          });
+      }
+
+      const codeMatches =
+        await bcrypt.compare(
+          normalizedCode,
+          verification.code_hash
+        );
+
+      if (!codeMatches) {
+        const updatedAttempts =
+          verification.attempts +
+          1;
+
+        const reachedLimit =
+          updatedAttempts >=
+          TWO_FACTOR_MAX_ATTEMPTS;
+
+        await verification.update({
+          attempts:
+            updatedAttempts,
+
+          used:
+            reachedLimit,
+        });
+
+        return res
+          .status(400)
+          .json({
+            message:
+              reachedLimit
+                ? 'Limite de tentativas atingido. Faça login novamente.'
+                : 'Código de verificação incorreto.',
+
+            attemptsRemaining:
+              Math.max(
+                0,
+                TWO_FACTOR_MAX_ATTEMPTS -
+                  updatedAttempts
+              ),
+          });
+      }
+
+      const user =
+        await User.findByPk(
+          verification.user_id
+        );
+
+      if (
+        !user ||
+        isAnonymousEmail(
+          user.email
+        )
+      ) {
+        await verification.update({
+          used:
+            true,
+        });
+
+        return res
+          .status(401)
+          .json({
+            message:
+              'A conta não está disponível.',
+          });
+      }
+
+      /*
+       * Caso a verificação tenha sido
+       * desativada durante o desafio,
+       * o acesso também não será liberado
+       * por um código antigo.
+       */
+      if (
+        user.two_factor_enabled !==
+        true
+      ) {
+        await verification.update({
+          used:
+            true,
+        });
+
+        return res
+          .status(400)
+          .json({
+            message:
+              'Esta verificação de login não é mais válida.',
+          });
+      }
+
+      await verification.update({
+        used:
+          true,
+      });
+
+      /*
+       * JWT DEFINITIVO SOMENTE
+       * DEPOIS DO CÓDIGO CORRETO
+       */
+      const token =
+        createUserToken(
+          user.id
+        );
+
+      return res
+        .status(200)
+        .json({
+          message:
+            'Verificação concluída. Login realizado com sucesso.',
+
+          requiresTwoFactor:
+            false,
+
+          token,
+
+          user:
+            formatUserResponse(
+              user
+            ),
+        });
+    } catch (error) {
+      console.error(
+        'ERRO AO CONFIRMAR LOGIN EM DUAS ETAPAS:',
+        {
+          name:
+            error.name,
+
+          message:
+            error.message,
+
+          sql:
+            error.sql,
+
+          original:
+            error.original
+              ?.message,
+
+          stack:
+            error.stack,
+        }
+      );
+
+      return res
+        .status(500)
+        .json({
+          message:
+            error.message ===
+            'JWT_SECRET não foi configurado no servidor.'
+              ? error.message
+              : 'Não foi possível confirmar o código de login.',
+        });
+    }
+  }
 }
 
 export default new AuthController();
-
-

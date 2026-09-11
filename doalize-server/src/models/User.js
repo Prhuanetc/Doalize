@@ -56,7 +56,8 @@ const User =
        * - login;
        * - identificação da conta;
        * - recuperação de senha;
-       * - recebimento do código.
+       * - recebimento dos códigos;
+       * - verificação em duas etapas.
        */
       email: {
         type:
@@ -132,6 +133,32 @@ const User =
               'A senha é obrigatória.',
           },
         },
+      },
+
+      /*
+       * VERIFICAÇÃO EM DUAS ETAPAS
+       *
+       * false:
+       * o login é concluído apenas
+       * com e-mail e senha.
+       *
+       * true:
+       * depois da senha correta,
+       * um código será enviado ao
+       * e-mail da conta.
+       *
+       * Começa desativada para não
+       * bloquear usuários existentes.
+       */
+      two_factor_enabled: {
+        type:
+          DataTypes.BOOLEAN,
+
+        allowNull:
+          false,
+
+        defaultValue:
+          false,
       },
 
       /*
@@ -227,10 +254,8 @@ const User =
       /*
        * DATA E HORA DO ACEITE
        *
-       * O horário será criado pelo backend.
-       * O horário enviado pelo aplicativo
-       * não será considerado como registro
-       * oficial do aceite.
+       * O horário oficial é criado
+       * pelo backend.
        *
        * Contas antigas podem possuir null.
        */
@@ -358,9 +383,21 @@ const User =
         },
 
         /*
-         * Auxilia consultas futuras para
-         * identificar usuários que aceitaram
-         * determinada versão dos Termos.
+         * IDENTIFICAR CONTAS COM
+         * VERIFICAÇÃO EM DUAS ETAPAS
+         */
+        {
+          name:
+            'users_two_factor_enabled_index',
+
+          fields: [
+            'two_factor_enabled',
+          ],
+        },
+
+        /*
+         * IDENTIFICAR USUÁRIOS QUE
+         * ACEITARAM UMA VERSÃO DOS TERMOS
          */
         {
           name:
@@ -372,9 +409,8 @@ const User =
         },
 
         /*
-         * Auxilia consultas futuras para
-         * identificar usuários que aceitaram
-         * determinada versão da Política.
+         * IDENTIFICAR USUÁRIOS QUE
+         * ACEITARAM UMA VERSÃO DA POLÍTICA
          */
         {
           name:

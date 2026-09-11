@@ -17,33 +17,42 @@ import {
 } from '@expo/vector-icons';
 
 /*
- * TELAS
+ * TELAS DO FEED
  */
 import HomeScreen from '../screens/Home/HomeScreen';
 
 import DetailsScreen from '../screens/Home/DetailsScreen';
 
+/*
+ * TELA DE PUBLICAÇÃO
+ */
 import PublishScreen from '../screens/Publish/PublishScreen';
 
+/*
+ * TELAS DE CONTATOS
+ */
 import ContactsScreen from '../screens/Contacts/ContactsScreen';
 
 import ChatScreen from '../screens/Chat/ChatScreen';
 
+/*
+ * TELAS DO PERFIL
+ */
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 
 import PublishedScreen from '../screens/Profile/PublishedScreen';
 
+/*
+ * TELAS DE CONFIGURAÇÕES
+ */
 import SettingsScreen from '../screens/Settings/SettingsScreen';
+
+import EmailChangeScreen from '../screens/Settings/EmailChangeScreen';
+
+import TwoFactorSettingsScreen from '../screens/Settings/TwoFactorSettingsScreen';
 
 /*
  * NAVEGADORES
- *
- * O MaterialTopTab será posicionado
- * na parte inferior da tela.
- *
- * Diferentemente do BottomTab comum,
- * ele permite trocar de aba arrastando
- * horizontalmente.
  */
 const Tab =
   createMaterialTopTabNavigator();
@@ -52,19 +61,29 @@ const Stack =
   createNativeStackNavigator();
 
 /*
+ * CONFIGURAÇÃO DAS PILHAS
+ */
+const stackScreenOptions = {
+  headerShown:
+    false,
+
+  animation:
+    'slide_from_right',
+
+  gestureEnabled:
+    true,
+};
+
+/*
  * PILHA DO FEED
  */
 function HomeStack() {
   return (
     <Stack.Navigator
       initialRouteName="HomeScreen"
-      screenOptions={{
-        headerShown:
-          false,
-
-        animation:
-          'slide_from_right',
-      }}
+      screenOptions={
+        stackScreenOptions
+      }
     >
       <Stack.Screen
         name="HomeScreen"
@@ -90,13 +109,9 @@ function ContactsStack() {
   return (
     <Stack.Navigator
       initialRouteName="ContactsScreen"
-      screenOptions={{
-        headerShown:
-          false,
-
-        animation:
-          'slide_from_right',
-      }}
+      screenOptions={
+        stackScreenOptions
+      }
     >
       <Stack.Screen
         name="ContactsScreen"
@@ -117,18 +132,18 @@ function ContactsStack() {
 
 /*
  * PILHA DO PERFIL
+ *
+ * As telas de alteração de e-mail
+ * e verificação em duas etapas
+ * precisam ficar nesta pilha.
  */
 function ProfileStack() {
   return (
     <Stack.Navigator
       initialRouteName="ProfileScreen"
-      screenOptions={{
-        headerShown:
-          false,
-
-        animation:
-          'slide_from_right',
-      }}
+      screenOptions={
+        stackScreenOptions
+      }
     >
       <Stack.Screen
         name="ProfileScreen"
@@ -150,25 +165,30 @@ function ProfileStack() {
           SettingsScreen
         }
       />
+
+      <Stack.Screen
+        name="EmailChangeScreen"
+        component={
+          EmailChangeScreen
+        }
+      />
+
+      <Stack.Screen
+        name="TwoFactorSettingsScreen"
+        component={
+          TwoFactorSettingsScreen
+        }
+      />
     </Stack.Navigator>
   );
 }
 
 /*
  * VERIFICAR SE A PILHA ESTÁ
- * NA SUA TELA PRINCIPAL
+ * NA TELA PRINCIPAL
  *
- * O gesto lateral será permitido apenas
- * nas páginas principais.
- *
- * Assim, arrastar dentro de:
- *
- * - detalhes de publicação;
- * - mensagens;
- * - configurações;
- * - publicações do perfil;
- *
- * não trocará de aba acidentalmente.
+ * O gesto horizontal das abas será
+ * bloqueado nas telas internas.
  */
 function isStackOnMainScreen(
   route,
@@ -198,44 +218,24 @@ export default function AppRoutes() {
       initialRouteName="Home"
       tabBarPosition="bottom"
       screenOptions={{
-        /*
-         * ATIVAR GESTO HORIZONTAL
-         */
         swipeEnabled:
           true,
 
-        /*
-         * CARREGAR AS TELAS SOMENTE
-         * QUANDO FOREM ACESSADAS
-         */
         lazy:
           true,
 
-        /*
-         * EXIBIR ÍCONES
-         */
         tabBarShowIcon:
           true,
 
-        /*
-         * NÃO PERMITIR ROLAGEM
-         * NA PRÓPRIA BARRA
-         */
         tabBarScrollEnabled:
           false,
 
-        /*
-         * CORES
-         */
         tabBarActiveTintColor:
           '#2563eb',
 
         tabBarInactiveTintColor:
           '#777777',
 
-        /*
-         * ESTILO DA BARRA INFERIOR
-         */
         tabBarStyle: {
           height:
             65,
@@ -273,10 +273,6 @@ export default function AppRoutes() {
             5,
         },
 
-        /*
-         * REMOVER A LINHA INDICADORA
-         * PADRÃO DO MATERIAL TAB
-         */
         tabBarIndicatorStyle: {
           height:
             0,
@@ -285,9 +281,6 @@ export default function AppRoutes() {
             'transparent',
         },
 
-        /*
-         * ESTILO DE CADA ITEM
-         */
         tabBarItemStyle: {
           minHeight:
             55,
@@ -299,9 +292,6 @@ export default function AppRoutes() {
             3,
         },
 
-        /*
-         * ESTILO DOS NOMES
-         */
         tabBarLabelStyle: {
           margin:
             0,
@@ -319,9 +309,6 @@ export default function AppRoutes() {
             'none',
         },
 
-        /*
-         * EFEITO DE TOQUE
-         */
         tabBarPressColor:
           'rgba(37, 99, 235, 0.10)',
 
@@ -367,10 +354,6 @@ export default function AppRoutes() {
         listeners={({
           navigation,
         }) => ({
-          /*
-           * Ao tocar novamente na aba,
-           * retorna para o Feed.
-           */
           tabPress: () => {
             navigation.navigate(
               'Home',
@@ -427,13 +410,6 @@ export default function AppRoutes() {
           title:
             'Contatos',
 
-          /*
-           * O gesto fica desativado dentro
-           * do ChatScreen.
-           *
-           * Na ContactsScreen, permanece
-           * totalmente habilitado.
-           */
           swipeEnabled:
             isStackOnMainScreen(
               route,
@@ -460,10 +436,6 @@ export default function AppRoutes() {
         listeners={({
           navigation,
         }) => ({
-          /*
-           * Ao tocar novamente na aba,
-           * retorna para a lista de contatos.
-           */
           tabPress: () => {
             navigation.navigate(
               'Contatos',
@@ -489,8 +461,9 @@ export default function AppRoutes() {
             'Conta',
 
           /*
-           * O gesto funciona no perfil,
-           * mas não nas telas internas.
+           * Impede a troca de aba por gesto
+           * nas Configurações, troca de
+           * e-mail e verificação em duas etapas.
            */
           swipeEnabled:
             isStackOnMainScreen(
@@ -518,10 +491,6 @@ export default function AppRoutes() {
         listeners={({
           navigation,
         }) => ({
-          /*
-           * Ao tocar novamente na aba,
-           * retorna para o perfil principal.
-           */
           tabPress: () => {
             navigation.navigate(
               'Conta',
