@@ -17,9 +17,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 
 import Header from '../../components/Header';
-
 import Input from '../../components/Input';
-
 import Button from '../../components/Button';
 
 import {
@@ -37,7 +35,6 @@ import {
 } from '../../utils/imageHelper';
 
 import imageUserLight from '../../../assets/imageuserlight.png';
-
 import imageUserDark from '../../../assets/imageuserdark.png';
 
 import styles from './styles';
@@ -566,7 +563,7 @@ export default function SettingsScreen({
   /*
    * SALVAR DADOS DO PERFIL
    *
-   * O e-mail não é enviado.
+   * O e-mail não é enviado por esta rota.
    */
   async function handleSaveProfile() {
     if (screenBusy) {
@@ -586,7 +583,8 @@ export default function SettingsScreen({
     }
 
     if (
-      normalizedName.length < 2
+      normalizedName.length <
+      2
     ) {
       Alert.alert(
         'Atenção',
@@ -637,9 +635,15 @@ export default function SettingsScreen({
         );
       }
 
-      await updateUser(
-        updatedUser
-      );
+      /*
+       * Preserva campos que o endpoint
+       * de atualização pode não retornar,
+       * como two_factor_enabled.
+       */
+      await updateUser({
+        ...user,
+        ...updatedUser,
+      });
 
       setSelectedPhoto(
         null
@@ -740,13 +744,24 @@ export default function SettingsScreen({
     } catch (error) {
       console.log(
         'ERRO AO SOLICITAR CÓDIGO:',
-        error.response?.data ||
-          error.message
+        {
+          message:
+            error.message,
+
+          status:
+            error.response
+              ?.status,
+
+          response:
+            error.response
+              ?.data,
+        }
       );
 
       Alert.alert(
         'Erro',
-        error.response?.data
+        error.response
+          ?.data
           ?.message ||
           'Não foi possível enviar o código.'
       );
@@ -785,7 +800,8 @@ export default function SettingsScreen({
     }
 
     if (
-      newPassword.length < 6
+      newPassword.length <
+      6
     ) {
       Alert.alert(
         'Atenção',
@@ -841,13 +857,24 @@ export default function SettingsScreen({
     } catch (error) {
       console.log(
         'ERRO AO ALTERAR SENHA:',
-        error.response?.data ||
-          error.message
+        {
+          message:
+            error.message,
+
+          status:
+            error.response
+              ?.status,
+
+          response:
+            error.response
+              ?.data,
+        }
       );
 
       Alert.alert(
         'Erro',
-        error.response?.data
+        error.response
+          ?.data
           ?.message ||
           'Não foi possível alterar a senha.'
       );
@@ -879,22 +906,16 @@ export default function SettingsScreen({
   }
 
   /*
-   * CONFIGURAR VERIFICAÇÃO
-   * EM DUAS ETAPAS
-   *
-   * A rota será registrada quando a
-   * tela específica for criada.
+   * ABRIR A TELA DE CONFIGURAÇÃO
+   * DA VERIFICAÇÃO EM DUAS ETAPAS
    */
   function handleTwoFactorSettings() {
     if (screenBusy) {
       return;
     }
 
-    Alert.alert(
-      'Verificação em duas etapas',
-      user?.two_factor_enabled
-        ? 'A verificação em duas etapas está ativada nesta conta.'
-        : 'A tela de ativação da verificação em duas etapas ainda precisa ser conectada.'
+    navigation.navigate(
+      'TwoFactorSettingsScreen'
     );
   }
 
@@ -1013,7 +1034,8 @@ export default function SettingsScreen({
 
       Alert.alert(
         'Erro',
-        error.response?.data
+        error.response
+          ?.data
           ?.message ||
           'Não foi possível anonimizar a conta.'
       );
@@ -1524,7 +1546,7 @@ export default function SettingsScreen({
           ]}
         />
 
-        {/* DUAS ETAPAS */}
+        {/* VERIFICAÇÃO EM DUAS ETAPAS */}
         <Text
           style={[
             styles.sectionTitle,
@@ -1554,7 +1576,7 @@ export default function SettingsScreen({
         <Button
           title={
             user?.two_factor_enabled
-              ? 'Verificação ativada'
+              ? 'Gerenciar verificação'
               : 'Configurar verificação'
           }
           onPress={
