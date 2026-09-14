@@ -8,7 +8,7 @@ import User from '../models/User.js';
 import TwoFactorVerification from '../models/TwoFactorVerification.js';
 
 import {
-  sendPasswordCode,
+  sendTwoFactorCode,
 } from '../services/emailService.js';
 
 dotenv.config();
@@ -333,28 +333,25 @@ async function createLoginTwoFactorChallenge(
     );
 
   /*
-   * INVALIDAR DESAFIOS
-   * ANTERIORES DE LOGIN
+   * REMOVER DESAFIOS ANTERIORES
+   * DE LOGIN PARA ESTE USUÁRIO
+   *
+   * Apenas o desafio mais recente
+   * permanecerá válido.
    */
-  await TwoFactorVerification.update(
-    {
-      used:
-        true,
+  await TwoFactorVerification.destroy({
+    where: {
+      user_id:
+        user.id,
+
+      purpose:
+        'login',
     },
-    {
-      where: {
-        user_id:
-          user.id,
+  });
 
-        purpose:
-          'login',
-
-        used:
-          false,
-      },
-    }
-  );
-
+  /*
+   * CRIAR NOVO DESAFIO
+   */
   const verification =
     await TwoFactorVerification.create({
       user_id:
@@ -381,14 +378,10 @@ async function createLoginTwoFactorChallenge(
 
   try {
     /*
-     * Usa o serviço já existente para
-     * evitar importação quebrada.
-     *
-     * O código funciona normalmente.
-     * Depois o template poderá receber
-     * um assunto específico para login.
+     * ENVIAR E-MAIL ESPECÍFICO
+     * PARA CONFIRMAÇÃO DO LOGIN
      */
-    await sendPasswordCode({
+    await sendTwoFactorCode({
       email:
         user.email,
 
@@ -396,12 +389,35 @@ async function createLoginTwoFactorChallenge(
         user.name,
 
       code,
+
+      purpose:
+        'login',
     });
   } catch (emailError) {
-    await verification.destroy();
+    /*
+     * Se o envio falhar, remove
+     * o desafio criado.
+     */
+    if (
+      verification &&
+      typeof verification.destroy ===
+        'function'
+    ) {
+      await verification.destroy();
+    }
 
     throw emailError;
   }
+
+  console.log(
+    'CÓDIGO DE LOGIN EM DUAS ETAPAS ENVIADO:',
+    {
+      userId:
+        user.id,
+
+      expiresAt,
+    }
+  );
 
   return {
     challengeToken,
@@ -754,7 +770,8 @@ class AuthController {
         });
 
       /*
-       * Não revelar se o e-mail existe.
+       * NÃO REVELAR SE
+       * O E-MAIL EXISTE
        */
       if (!user) {
         return res
@@ -765,6 +782,10 @@ class AuthController {
           });
       }
 
+      /*
+       * BLOQUEAR CONTA
+       * ANONIMIZADA
+       */
       if (
         isAnonymousEmail(
           user.email
@@ -778,6 +799,9 @@ class AuthController {
           });
       }
 
+      /*
+       * COMPARAR SENHA
+       */
       const passwordMatch =
         await bcrypt.compare(
           normalizedPassword,
@@ -797,11 +821,13 @@ class AuthController {
        * LOGIN COM VERIFICAÇÃO
        * EM DUAS ETAPAS
        *
-       * Não cria JWT definitivo ainda.
+       * O JWT definitivo ainda
+       * não será criado.
        */
       if (
-        user.two_factor_enabled ===
-        true
+        Boolean(
+          user.two_factor_enabled
+        )
       ) {
         let challenge;
 
@@ -925,7 +951,15 @@ class AuthController {
         String(
           req.body?.code ||
           ''
-        ).trim();
+        )
+          .replace(
+            /\D/g,
+            ''
+          )
+          .slice(
+            0,
+            6
+          );
 
       const challengeToken =
         typeof req.body
@@ -962,8 +996,8 @@ class AuthController {
       }
 
       /*
-       * O token recebido é transformado
-       * em hash antes da consulta.
+       * TRANSFORMAR O TOKEN RECEBIDO
+       * EM HASH ANTES DA CONSULTA
        */
       const challengeTokenHash =
         createSha256Hash(
@@ -1000,8 +1034,14 @@ class AuthController {
           });
       }
 
+      /*
+       * VERIFICAR LIMITE
+       * DE TENTATIVAS
+       */
       if (
-        verification.attempts >=
+        Number(
+          verification.attempts
+        ) >=
         TWO_FACTOR_MAX_ATTEMPTS
       ) {
         await verification.update({
@@ -1017,11 +1057,20 @@ class AuthController {
           });
       }
 
-      if (
+      /*
+       * VERIFICAR EXPIRAÇÃO
+       */
+      const expirationTime =
         new Date(
           verification.expires_at
-        ).getTime() <
-        Date.now()
+        ).getTime();
+
+      if (
+        !Number.isFinite(
+          expirationTime
+        ) ||
+        expirationTime <
+          Date.now()
       ) {
         await verification.update({
           used:
@@ -1036,6 +1085,9 @@ class AuthController {
           });
       }
 
+      /*
+       * COMPARAR CÓDIGO
+       */
       const codeMatches =
         await bcrypt.compare(
           normalizedCode,
@@ -1044,8 +1096,10 @@ class AuthController {
 
       if (!codeMatches) {
         const updatedAttempts =
-          verification.attempts +
-          1;
+          Number(
+            verification.attempts ||
+            0
+          ) + 1;
 
         const reachedLimit =
           updatedAttempts >=
@@ -1076,6 +1130,9 @@ class AuthController {
           });
       }
 
+      /*
+       * BUSCAR USUÁRIO DO DESAFIO
+       */
       const user =
         await User.findByPk(
           verification.user_id
@@ -1101,14 +1158,14 @@ class AuthController {
       }
 
       /*
-       * Caso a verificação tenha sido
-       * desativada durante o desafio,
-       * o acesso também não será liberado
-       * por um código antigo.
+       * BLOQUEAR DESAFIO CASO
+       * AS DUAS ETAPAS TENHAM
+       * SIDO DESATIVADAS
        */
       if (
-        user.two_factor_enabled !==
-        true
+        !Boolean(
+          user.two_factor_enabled
+        )
       ) {
         await verification.update({
           used:
@@ -1123,19 +1180,34 @@ class AuthController {
           });
       }
 
+      /*
+       * MARCAR DESAFIO
+       * COMO UTILIZADO
+       */
       await verification.update({
         used:
           true,
       });
 
       /*
-       * JWT DEFINITIVO SOMENTE
-       * DEPOIS DO CÓDIGO CORRETO
+       * CRIAR JWT DEFINITIVO
+       * APENAS APÓS O CÓDIGO
        */
       const token =
         createUserToken(
           user.id
         );
+
+      console.log(
+        'LOGIN EM DUAS ETAPAS CONFIRMADO:',
+        {
+          userId:
+            user.id,
+
+          verificationId:
+            verification.id,
+        }
+      );
 
       return res
         .status(200)

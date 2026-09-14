@@ -2,6 +2,10 @@ import crypto from 'crypto';
 
 import bcrypt from 'bcryptjs';
 
+import {
+  Op,
+} from 'sequelize';
+
 import sequelize from '../config/database.js';
 
 import User from '../models/User.js';
@@ -9,7 +13,7 @@ import User from '../models/User.js';
 import TwoFactorVerification from '../models/TwoFactorVerification.js';
 
 import {
-  sendPasswordCode,
+  sendTwoFactorCode,
 } from '../services/emailService.js';
 
 const CODE_EXPIRATION_MINUTES =
@@ -19,7 +23,8 @@ const MAX_CODE_ATTEMPTS =
   5;
 
 /*
- * GERAR CÓDIGO DE SEIS DÍGITOS
+ * GERAR CÓDIGO COM
+ * SEIS DÍGITOS
  */
 function createVerificationCode() {
   return String(
@@ -62,6 +67,30 @@ function normalizeCode(
 }
 
 /*
+ * NORMALIZAR ID
+ */
+function normalizeUserId(
+  userId
+) {
+  const normalizedUserId =
+    Number(
+      userId
+    );
+
+  if (
+    !Number.isInteger(
+      normalizedUserId
+    ) ||
+    normalizedUserId <=
+      0
+  ) {
+    return null;
+  }
+
+  return normalizedUserId;
+}
+
+/*
  * IDENTIFICAR CONTA
  * ANONIMIZADA
  */
@@ -78,26 +107,34 @@ function isAnonymousEmail(
 }
 
 /*
- * VALIDAR ID DO USUÁRIO
+ * MARCAR UMA VERIFICAÇÃO
+ * COMO UTILIZADA
  */
-function normalizeUserId(
-  userId
+async function markVerificationAsUsed(
+  verification,
+  transaction = null
 ) {
-  const normalizedUserId =
-    Number(
-      userId
-    );
-
   if (
-    !Number.isInteger(
-      normalizedUserId
-    ) ||
-    normalizedUserId <= 0
+    !verification ||
+    typeof verification.update !==
+      'function'
   ) {
-    return null;
+    throw new Error(
+      'A solicitação de verificação possui um formato inválido.'
+    );
   }
 
-  return normalizedUserId;
+  await verification.update(
+    {
+      used:
+        true,
+    },
+    transaction
+      ? {
+          transaction,
+        }
+      : undefined
+  );
 }
 
 class TwoFactorController {
@@ -196,7 +233,7 @@ class TwoFactorController {
    *
    * POST /users/two-factor/request-change
    *
-   * Corpo:
+   * Recebe:
    *
    * {
    *   "enable": true
@@ -274,6 +311,12 @@ class TwoFactorController {
           });
       }
 
+      /*
+       * FINALIDADE DO CÓDIGO
+       *
+       * O mesmo valor é salvo no banco
+       * e enviado ao serviço de e-mail.
+       */
       const purpose =
         enable
           ? 'enable'
@@ -292,33 +335,26 @@ class TwoFactorController {
         createExpirationDate();
 
       /*
-       * INVALIDAR CÓDIGOS ANTERIORES
+       * REMOVER SOLICITAÇÕES ANTIGAS
        * DE ATIVAÇÃO OU DESATIVAÇÃO
-       *
-       * Desafios de login não são
-       * alterados por esta operação.
        */
-      await TwoFactorVerification.update(
-        {
-          used:
-            true,
-        },
-        {
-          where: {
-            user_id:
-              user.id,
+      await TwoFactorVerification.destroy({
+        where: {
+          user_id:
+            user.id,
 
-            purpose: [
+          purpose: {
+            [Op.in]: [
               'enable',
               'disable',
             ],
-
-            used:
-              false,
           },
-        }
-      );
+        },
+      });
 
+      /*
+       * CRIAR NOVA SOLICITAÇÃO
+       */
       const verification =
         await TwoFactorVerification.create({
           user_id:
@@ -344,10 +380,18 @@ class TwoFactorController {
 
       try {
         /*
-         * Utiliza o serviço de e-mail
-         * já existente.
+         * ENVIAR E-MAIL ESPECÍFICO
+         * DE VERIFICAÇÃO EM DUAS ETAPAS
+         *
+         * purpose será:
+         *
+         * enable:
+         * ativação.
+         *
+         * disable:
+         * desativação.
          */
-        await sendPasswordCode({
+        await sendTwoFactorCode({
           email:
             user.email,
 
@@ -355,12 +399,37 @@ class TwoFactorController {
             user.name,
 
           code,
+
+          purpose,
         });
       } catch (emailError) {
-        await verification.destroy();
+        /*
+         * Se o envio falhar, remove
+         * a solicitação criada para não
+         * deixar um código sem entrega.
+         */
+        if (
+          verification &&
+          typeof verification.destroy ===
+            'function'
+        ) {
+          await verification.destroy();
+        }
 
         throw emailError;
       }
+
+      console.log(
+        'CÓDIGO DE VERIFICAÇÃO EM DUAS ETAPAS ENVIADO:',
+        {
+          userId:
+            user.id,
+
+          purpose,
+
+          expiresAt,
+        }
+      );
 
       return res
         .status(200)
@@ -414,7 +483,7 @@ class TwoFactorController {
    *
    * POST /users/two-factor/confirm-change
    *
-   * Corpo:
+   * Recebe:
    *
    * {
    *   "enable": true,
@@ -550,18 +619,19 @@ class TwoFactorController {
           });
       }
 
+      /*
+       * VERIFICAR LIMITE
+       * DE TENTATIVAS
+       */
       if (
-        verification.attempts >=
+        Number(
+          verification.attempts
+        ) >=
         MAX_CODE_ATTEMPTS
       ) {
-        await verification.update(
-          {
-            used:
-              true,
-          },
-          {
-            transaction,
-          }
+        await markVerificationAsUsed(
+          verification,
+          transaction
         );
 
         await transaction.commit();
@@ -574,20 +644,24 @@ class TwoFactorController {
           });
       }
 
-      if (
+      /*
+       * VERIFICAR EXPIRAÇÃO
+       */
+      const expiresAt =
         new Date(
           verification.expires_at
-        ).getTime() <
-        Date.now()
+        ).getTime();
+
+      if (
+        !Number.isFinite(
+          expiresAt
+        ) ||
+        expiresAt <
+          Date.now()
       ) {
-        await verification.update(
-          {
-            used:
-              true,
-          },
-          {
-            transaction,
-          }
+        await markVerificationAsUsed(
+          verification,
+          transaction
         );
 
         await transaction.commit();
@@ -600,6 +674,10 @@ class TwoFactorController {
           });
       }
 
+      /*
+       * COMPARAR CÓDIGO
+       * COM O HASH SALVO
+       */
       const codeMatches =
         await bcrypt.compare(
           code,
@@ -608,8 +686,10 @@ class TwoFactorController {
 
       if (!codeMatches) {
         const updatedAttempts =
-          verification.attempts +
-          1;
+          Number(
+            verification.attempts ||
+            0
+          ) + 1;
 
         const limitReached =
           updatedAttempts >=
@@ -647,6 +727,10 @@ class TwoFactorController {
           });
       }
 
+      /*
+       * ATIVAR OU DESATIVAR
+       * A VERIFICAÇÃO
+       */
       await user.update(
         {
           two_factor_enabled:
@@ -658,44 +742,56 @@ class TwoFactorController {
       );
 
       /*
-       * INVALIDAR O CÓDIGO CONFIRMADO
+       * MARCAR O CÓDIGO
+       * COMO UTILIZADO
        */
-      await verification.update(
-        {
-          used:
-            true,
-        },
-        {
-          transaction,
-        }
+      await markVerificationAsUsed(
+        verification,
+        transaction
       );
 
       /*
-       * INVALIDAR OUTRAS SOLICITAÇÕES
+       * REMOVER OUTRAS SOLICITAÇÕES
        * DE ATIVAÇÃO OU DESATIVAÇÃO
        */
-      await TwoFactorVerification.update(
-        {
-          used:
-            true,
+      await TwoFactorVerification.destroy({
+        where: {
+          user_id:
+            user.id,
+
+          purpose: {
+            [Op.in]: [
+              'enable',
+              'disable',
+            ],
+          },
+
+          id: {
+            [Op.ne]:
+              verification.id,
+          },
         },
-        {
+
+        transaction,
+      });
+
+      /*
+       * AO DESATIVAR, INVALIDAR
+       * DESAFIOS ANTIGOS DE LOGIN
+       */
+      if (!enable) {
+        await TwoFactorVerification.destroy({
           where: {
             user_id:
               user.id,
 
-            purpose: [
-              'enable',
-              'disable',
-            ],
-
-            used:
-              false,
+            purpose:
+              'login',
           },
 
           transaction,
-        }
-      );
+        });
+      }
 
       await transaction.commit();
 
@@ -753,6 +849,7 @@ class TwoFactorController {
         .status(500)
         .json({
           message:
+            error.message ||
             'Não foi possível alterar a verificação em duas etapas.',
         });
     }
