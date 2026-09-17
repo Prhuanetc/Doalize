@@ -7,12 +7,8 @@ import {
   SafeAreaView,
   StyleSheet,
   StatusBar,
-  Platform,
+  Image,
 } from 'react-native';
-
-import {
-  Ionicons,
-} from '@expo/vector-icons';
 
 import {
   useNavigation,
@@ -22,17 +18,42 @@ import {
   useTheme,
 } from '../../hooks/useTheme';
 
+
+/*
+ * ============================================================
+ * WELCOME SCREEN
+ * ============================================================
+ *
+ * Tela inicial de entrada do Doalize.
+ *
+ * Aparência:
+ *
+ * - Dark Mode;
+ * - fundo #141414;
+ * - logo oficial em PNG;
+ * - "Doalize" e "Seja Bem Vindo!" vêm da própria imagem;
+ * - dois botões centralizados;
+ * - visual simples, plano e harmonioso;
+ * - sem logo criada por ícone;
+ * - sem textos duplicados.
+ *
+ * A navegação original foi preservada.
+ */
+
 export default function WelcomeScreen() {
-  const navigation =
-    useNavigation();
+
+  const navigation = useNavigation();
 
   const {
     theme,
     darkMode,
   } = useTheme();
 
+
   /*
+   * ============================================================
    * ABRIR LOGIN
+   * ============================================================
    */
   function handleOpenLogin() {
     navigation.navigate(
@@ -40,8 +61,11 @@ export default function WelcomeScreen() {
     );
   }
 
+
   /*
+   * ============================================================
    * ABRIR CADASTRO
+   * ============================================================
    */
   function handleOpenRegister() {
     navigation.navigate(
@@ -49,399 +73,389 @@ export default function WelcomeScreen() {
     );
   }
 
+
   return (
     <SafeAreaView
       style={[
         styles.container,
         {
-          backgroundColor:
-            theme.background,
+          backgroundColor: '#141414',
         },
       ]}
     >
+
       <StatusBar
-        barStyle={
-          darkMode
-            ? 'light-content'
-            : 'dark-content'
-        }
-        backgroundColor={
-          theme.background
-        }
+        barStyle="light-content"
+        backgroundColor="#141414"
       />
 
-      {/* CONTEÚDO PRINCIPAL */}
+
+      {/* ======================================================
+          CONTEÚDO PRINCIPAL
+          ====================================================== */}
+
       <View
         style={
           styles.content
         }
       >
-        {/* MARCA */}
+
+        {/* ====================================================
+            COMPOSIÇÃO CENTRAL
+            ==================================================== */}
+
         <View
           style={
-            styles.brandContainer
+            styles.mainContent
           }
         >
-          <View
-            style={[
-              styles.logoSymbol,
-              {
-                backgroundColor:
-                  darkMode
-                    ? 'rgba(91, 141, 239, 0.16)'
-                    : 'rgba(37, 99, 235, 0.10)',
 
-                borderColor:
-                  darkMode
-                    ? 'rgba(108, 153, 241, 0.28)'
-                    : 'rgba(37, 99, 235, 0.16)',
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.logoHeartBackground,
-                {
-                  backgroundColor:
-                    theme.primary,
-                },
-              ]}
-            >
-              <Ionicons
-                name="heart"
-                size={38}
-                color="#ffffff"
-              />
-            </View>
-          </View>
+          {/* ==================================================
+              LOGO OFICIAL DO DOALIZE
+              ==================================================
 
-          <Text
-            style={[
-              styles.logoText,
-              {
-                color:
-                  theme.text,
-              },
-            ]}
-          >
-            Doalize
-          </Text>
+              Caminho correto:
 
-          <Text
-            style={[
-              styles.welcomeText,
-              {
-                color:
-                  theme.textSecondary,
-              },
-            ]}
-          >
-            Seja bem-vindo
-          </Text>
+              src/screens/Auth/WelcomeScreen.js
+                    ↓
+              ../../..
+                    ↓
+              assets/logosejabemvindo.png
 
-          <Text
-            style={[
-              styles.description,
-              {
-                color:
-                  theme.textSecondary,
-              },
-            ]}
-          >
-            Conectando pessoas a causas solidárias.
-          </Text>
-        </View>
+              A imagem já contém:
+              - coração;
+              - Doalize;
+              - Seja Bem Vindo!
+              ================================================== */}
 
-        {/* BOTÕES */}
-        <View
-          style={
-            styles.actionsContainer
-          }
-        >
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={
-              handleOpenLogin
+          <Image
+            source={
+              require(
+                '../../../assets/logosejabemvindo.png'
+              )
             }
-            accessibilityRole="button"
-            accessibilityLabel="Entrar na conta"
-            style={[
-              styles.primaryButton,
-              {
-                backgroundColor:
-                  theme.primary,
+            style={
+              styles.logoImage
+            }
+            resizeMode="contain"
+            accessible={true}
+            accessibilityLabel="Doalize, seja bem-vindo"
+          />
 
-                shadowColor:
-                  theme.primary,
-              },
-            ]}
+
+          {/* ==================================================
+              BOTÕES
+              ================================================== */}
+
+          <View
+            style={
+              styles.actionsContainer
+            }
           >
-            <Text
+
+            {/* =================================================
+                ENTRAR
+                ================================================= */}
+
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={
+                handleOpenLogin
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Entrar na conta"
               style={
-                styles.primaryButtonText
+                styles.primaryButton
               }
             >
-              Entrar
-            </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={
-              handleOpenRegister
-            }
-            accessibilityRole="button"
-            accessibilityLabel="Criar uma conta"
-            style={[
-              styles.secondaryButton,
-              {
-                backgroundColor:
-                  darkMode
-                    ? theme.card
-                    : '#ffffff',
+              <Text
+                style={
+                  styles.primaryButtonText
+                }
+              >
+                Entrar
+              </Text>
 
-                borderColor:
-                  theme.primary,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.secondaryButtonText,
-                {
-                  color:
-                    theme.primary,
-                },
-              ]}
+            </TouchableOpacity>
+
+
+            {/* =================================================
+                CADASTRAR
+                ================================================= */}
+
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={
+                handleOpenRegister
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Criar uma conta"
+              style={
+                styles.secondaryButton
+              }
             >
-              Cadastrar
-            </Text>
-          </TouchableOpacity>
 
-          <Text
-            style={[
-              styles.legalText,
-              {
-                color:
-                  theme.textSecondary,
-              },
-            ]}
-          >
-            Ao criar uma conta, você poderá ler e aceitar os Termos de Uso e a Política de Privacidade.
-          </Text>
+              <Text
+                style={
+                  styles.secondaryButtonText
+                }
+              >
+                Cadastrar
+              </Text>
+
+            </TouchableOpacity>
+
+          </View>
+
         </View>
+
       </View>
+
     </SafeAreaView>
   );
 }
 
+
+/*
+ * ============================================================
+ * ESTILOS
+ * ============================================================
+ */
+
 const styles =
   StyleSheet.create({
+
     /*
+     * ========================================================
      * TELA
+     * ========================================================
      */
     container: {
       flex: 1,
+
+      width: '100%',
+
+      backgroundColor: '#141414',
     },
 
+
+    /*
+     * ========================================================
+     * CONTEÚDO
+     * ========================================================
+     *
+     * Centraliza todo o conjunto:
+     *
+     * logo
+     * +
+     * botões
+     *
+     * Isso evita que a retirada dos textos separados deixe
+     * a composição visual desalinhada.
+     */
     content: {
       flex: 1,
 
-      justifyContent:
-        'space-between',
+      width: '100%',
 
-      paddingHorizontal: 28,
+      alignItems: 'center',
 
-      paddingTop:
-        Platform.OS === 'android'
-          ? 58
-          : 42,
+      justifyContent: 'center',
 
-      paddingBottom:
-        Platform.OS === 'android'
-          ? 38
-          : 28,
+      paddingHorizontal: 24,
+
+      paddingVertical: 24,
     },
 
+
     /*
-     * ÁREA DA MARCA
+     * ========================================================
+     * BLOCO CENTRAL
+     * ========================================================
      */
-    brandContainer: {
-      flex: 1,
+    mainContent: {
+      width: '100%',
+
+      maxWidth: 330,
 
       alignItems: 'center',
 
       justifyContent: 'center',
 
-      paddingBottom: 30,
+      alignSelf: 'center',
     },
 
-    logoSymbol: {
-      width: 116,
-
-      height: 116,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      marginBottom: 24,
-
-      borderWidth: 1,
-
-      borderRadius: 58,
-    },
-
-    logoHeartBackground: {
-      width: 76,
-
-      height: 76,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      borderRadius: 38,
-
-      shadowColor: '#2563eb',
-
-      shadowOffset: {
-        width: 0,
-
-        height: 9,
-      },
-
-      shadowOpacity: 0.24,
-
-      shadowRadius: 14,
-
-      elevation: 8,
-    },
-
-    logoText: {
-      fontSize: 43,
-
-      lineHeight: 52,
-
-      fontWeight: '900',
-
-      letterSpacing: 0.4,
-
-      textAlign: 'center',
-    },
-
-    welcomeText: {
-      marginTop: 12,
-
-      fontSize: 18,
-
-      lineHeight: 25,
-
-      fontWeight: '700',
-
-      textAlign: 'center',
-    },
-
-    description: {
-      maxWidth: 290,
-
-      marginTop: 8,
-
-      fontSize: 14,
-
-      lineHeight: 21,
-
-      fontWeight: '400',
-
-      textAlign: 'center',
-    },
 
     /*
-     * AÇÕES
+     * ========================================================
+     * LOGO
+     * ========================================================
+     *
+     * A imagem original possui aproximadamente:
+     *
+     * 1816 × 534
+     *
+     * O aspectRatio mantém a proporção original.
+     */
+    logoImage: {
+      width: '100%',
+
+      maxWidth: 315,
+
+      aspectRatio: 1816 / 534,
+
+      alignSelf: 'center',
+
+      resizeMode: 'contain',
+
+      margin: 0,
+
+      padding: 0,
+
+      backgroundColor: 'transparent',
+    },
+
+
+    /*
+     * ========================================================
+     * ÁREA DOS BOTÕES
+     * ========================================================
      */
     actionsContainer: {
       width: '100%',
 
+      maxWidth: 300,
+
       alignItems: 'center',
+
+      justifyContent: 'center',
+
+      marginTop: 34,
+
+      alignSelf: 'center',
     },
 
+
+    /*
+     * ========================================================
+     * BOTÃO ENTRAR
+     * ========================================================
+     *
+     * Azul principal da identidade:
+     *
+     * #3AC2F8
+     */
     primaryButton: {
       width: '100%',
 
-      minHeight: 56,
+      height: 44,
+
+      minHeight: 44,
 
       alignItems: 'center',
 
       justifyContent: 'center',
 
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
 
-      borderRadius: 28,
+      paddingVertical: 0,
 
-      shadowOffset: {
-        width: 0,
+      borderRadius: 10,
 
-        height: 8,
-      },
+      backgroundColor: '#3AC2F8',
 
-      shadowOpacity: 0.22,
+      margin: 0,
 
-      shadowRadius: 12,
-
-      elevation: 7,
+      overflow: 'hidden',
     },
 
+
+    /*
+     * ========================================================
+     * TEXTO DO BOTÃO ENTRAR
+     * ========================================================
+     */
     primaryButtonText: {
-      color: '#ffffff',
+      color: '#141414',
 
       fontSize: 17,
 
-      lineHeight: 23,
+      lineHeight: 20,
 
-      fontWeight: '800',
+      fontWeight: '600',
 
       textAlign: 'center',
+
+      includeFontPadding: false,
+
+      margin: 0,
+
+      padding: 0,
     },
 
+
+    /*
+     * ========================================================
+     * BOTÃO CADASTRAR
+     * ========================================================
+     *
+     * Segundo botão:
+     *
+     * - transparente;
+     * - borda azul;
+     * - mesmo tamanho do primeiro.
+     */
     secondaryButton: {
       width: '100%',
 
-      minHeight: 56,
+      height: 44,
+
+      minHeight: 44,
 
       alignItems: 'center',
 
       justifyContent: 'center',
 
-      marginTop: 14,
+      paddingHorizontal: 16,
 
-      paddingHorizontal: 20,
+      paddingVertical: 0,
 
-      borderWidth: 2,
+      marginTop: 10,
 
-      borderRadius: 28,
+      borderWidth: 1,
+
+      borderColor: '#3AC2F8',
+
+      borderRadius: 10,
+
+      backgroundColor: 'transparent',
+
+      overflow: 'hidden',
     },
 
+
+    /*
+     * ========================================================
+     * TEXTO DO BOTÃO CADASTRAR
+     * ========================================================
+     */
     secondaryButtonText: {
+      color: '#3AC2F8',
+
       fontSize: 17,
 
-      lineHeight: 23,
+      lineHeight: 20,
 
-      fontWeight: '800',
-
-      textAlign: 'center',
-    },
-
-    legalText: {
-      maxWidth: 310,
-
-      marginTop: 20,
-
-      paddingHorizontal: 8,
-
-      fontSize: 11,
-
-      lineHeight: 17,
+      fontWeight: '600',
 
       textAlign: 'center',
+
+      includeFontPadding: false,
+
+      margin: 0,
+
+      padding: 0,
     },
+
   });

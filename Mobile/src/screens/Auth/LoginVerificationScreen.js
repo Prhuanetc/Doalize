@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 
 import {
@@ -35,6 +36,38 @@ import {
   useTheme,
 } from '../../hooks/useTheme';
 
+import logo from '../../../assets/logo.png';
+
+/*
+ * PALETA OFICIAL
+ * DO DOALIZE
+ */
+const COLORS = {
+  lightBlue:
+    '#44AFDD',
+
+  primary:
+    '#3594BD',
+
+  darkBlue:
+    '#166892',
+
+  navyBlue:
+    '#1D5D76',
+
+  lightBackground:
+    '#E1E1E1',
+
+  darkBackground:
+    '#0B0B0F',
+
+  accent:
+    '#22869C',
+
+  white:
+    '#FFFFFF',
+};
+
 export default function LoginVerificationScreen() {
   const navigation =
     useNavigation();
@@ -49,7 +82,6 @@ export default function LoginVerificationScreen() {
   } = useAuth();
 
   const {
-    theme,
     darkMode,
   } = useTheme();
 
@@ -59,12 +91,19 @@ export default function LoginVerificationScreen() {
       ? route.params.email
       : '';
 
-  const expiresInMinutes =
+  const receivedExpiration =
     Number(
       route.params
-        ?.expiresInMinutes ||
-        10
+        ?.expiresInMinutes
     );
+
+  const expiresInMinutes =
+    Number.isFinite(
+      receivedExpiration
+    ) &&
+    receivedExpiration > 0
+      ? receivedExpiration
+      : 10;
 
   const [
     verificationCode,
@@ -75,6 +114,35 @@ export default function LoginVerificationScreen() {
     loading,
     setLoading,
   ] = useState(false);
+
+  /*
+   * CORES ADAPTADAS
+   * AO TEMA
+   */
+  const screenBackground =
+    darkMode
+      ? COLORS.darkBackground
+      : COLORS.lightBackground;
+
+  const cardBackground =
+    darkMode
+      ? COLORS.darkBackground
+      : COLORS.white;
+
+  const mainTextColor =
+    darkMode
+      ? COLORS.white
+      : COLORS.darkBackground;
+
+  const secondaryTextColor =
+    darkMode
+      ? COLORS.lightBackground
+      : COLORS.navyBlue;
+
+  const cardBorderColor =
+    darkMode
+      ? COLORS.navyBlue
+      : COLORS.lightBlue;
 
   /*
    * ESCONDER PARTE DO E-MAIL
@@ -100,7 +168,10 @@ export default function LoginVerificationScreen() {
       domain,
     ] = value.split('@');
 
-    if (!domain) {
+    if (
+      !localPart ||
+      !domain
+    ) {
       return 'seu e-mail cadastrado';
     }
 
@@ -121,6 +192,9 @@ export default function LoginVerificationScreen() {
 
   /*
    * NORMALIZAR CÓDIGO
+   *
+   * Aceita apenas números e
+   * limita a seis dígitos.
    */
   function handleCodeChange(
     value
@@ -247,14 +321,10 @@ export default function LoginVerificationScreen() {
       }
 
       /*
-       * Não é necessário navegar
-       * manualmente para o Feed.
+       * O AuthContext salva a sessão.
        *
-       * confirmTwoFactorLogin salva
-       * o usuário no AuthContext.
-       *
-       * O navegador raiz desmontará
-       * AuthRoutes e abrirá AppRoutes.
+       * O navegador raiz desmonta
+       * AuthRoutes e abre AppRoutes.
        */
       console.log(
         'LOGIN EM DUAS ETAPAS CONCLUÍDO.'
@@ -278,7 +348,8 @@ export default function LoginVerificationScreen() {
 
       Alert.alert(
         'Erro',
-        error.response?.data
+        error.response
+          ?.data
           ?.message ||
           'Não foi possível confirmar o código.'
       );
@@ -321,18 +392,14 @@ export default function LoginVerificationScreen() {
         styles.safeArea,
         {
           backgroundColor:
-            theme.background,
+            screenBackground,
         },
       ]}
     >
       <StatusBar
-        barStyle={
-          darkMode
-            ? 'light-content'
-            : 'dark-content'
-        }
+        barStyle="light-content"
         backgroundColor={
-          theme.background
+          COLORS.navyBlue
         }
       />
 
@@ -341,14 +408,17 @@ export default function LoginVerificationScreen() {
           styles.container
         }
         behavior={
-          Platform.OS === 'ios'
+          Platform.OS ===
+          'ios'
             ? 'padding'
             : undefined
         }
       >
-        {/* VOLTAR */}
+        {/*
+         * VOLTAR
+         */}
         <TouchableOpacity
-          activeOpacity={0.7}
+          activeOpacity={0.72}
           onPress={
             handleBackToLogin
           }
@@ -361,12 +431,10 @@ export default function LoginVerificationScreen() {
             styles.backButton,
             {
               backgroundColor:
-                darkMode
-                  ? theme.card
-                  : '#ffffff',
+                cardBackground,
 
               borderColor:
-                theme.border,
+                cardBorderColor,
 
               opacity:
                 loading
@@ -377,9 +445,11 @@ export default function LoginVerificationScreen() {
         >
           <Ionicons
             name="arrow-back"
-            size={24}
+            size={23}
             color={
-              theme.text
+              darkMode
+                ? COLORS.lightBlue
+                : COLORS.darkBlue
             }
           />
         </TouchableOpacity>
@@ -394,50 +464,82 @@ export default function LoginVerificationScreen() {
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/* ÍCONE DE SEGURANÇA */}
+          {/*
+           * IDENTIDADE DO DOALIZE
+           */}
+          <View
+            style={
+              styles.logoArea
+            }
+          >
+            <View
+              style={
+                styles.logoDecorationOne
+              }
+            />
+
+            <View
+              style={
+                styles.logoDecorationTwo
+              }
+            />
+
+            <Image
+              source={
+                logo
+              }
+              style={
+                styles.logoImage
+              }
+              resizeMode="contain"
+              accessible
+              accessibilityLabel="Doalize"
+            />
+          </View>
+
+          {/*
+           * ÍCONE DE SEGURANÇA
+           */}
           <View
             style={[
-              styles.securityIconContainer,
+              styles.securityIconOuter,
               {
                 backgroundColor:
                   darkMode
-                    ? 'rgba(91, 141, 239, 0.16)'
-                    : 'rgba(37, 99, 235, 0.10)',
+                    ? COLORS.navyBlue
+                    : COLORS.white,
 
                 borderColor:
                   darkMode
-                    ? 'rgba(108, 153, 241, 0.27)'
-                    : 'rgba(37, 99, 235, 0.15)',
+                    ? COLORS.accent
+                    : COLORS.lightBlue,
               },
             ]}
           >
             <View
-              style={[
-                styles.securityIcon,
-                {
-                  backgroundColor:
-                    theme.primary,
-
-                  shadowColor:
-                    theme.primary,
-                },
-              ]}
+              style={
+                styles.securityIconInner
+              }
             >
               <Ionicons
                 name="shield-checkmark"
-                size={34}
-                color="#ffffff"
+                size={33}
+                color={
+                  COLORS.white
+                }
               />
             </View>
           </View>
 
-          {/* TÍTULO */}
+          {/*
+           * TÍTULO E INFORMAÇÕES
+           */}
           <Text
             style={[
               styles.title,
               {
                 color:
-                  theme.text,
+                  mainTextColor,
               },
             ]}
           >
@@ -449,51 +551,120 @@ export default function LoginVerificationScreen() {
               styles.description,
               {
                 color:
-                  theme.textSecondary,
+                  secondaryTextColor,
               },
             ]}
           >
             Enviamos um código de 6 dígitos para:
           </Text>
 
-          <Text
+          <View
             style={[
-              styles.emailText,
+              styles.emailContainer,
               {
-                color:
-                  theme.primary,
+                backgroundColor:
+                  darkMode
+                    ? COLORS.navyBlue
+                    : COLORS.white,
+
+                borderColor:
+                  darkMode
+                    ? COLORS.accent
+                    : COLORS.lightBlue,
               },
             ]}
           >
-            {maskEmail(
-              email
-            )}
-          </Text>
+            <Ionicons
+              name="mail-outline"
+              size={19}
+              color={
+                darkMode
+                  ? COLORS.lightBlue
+                  : COLORS.darkBlue
+              }
+            />
+
+            <Text
+              style={[
+                styles.emailText,
+                {
+                  color:
+                    darkMode
+                      ? COLORS.lightBlue
+                      : COLORS.darkBlue,
+                },
+              ]}
+            >
+              {maskEmail(
+                email
+              )}
+            </Text>
+          </View>
 
           <Text
             style={[
               styles.expirationText,
               {
                 color:
-                  theme.textSecondary,
+                  secondaryTextColor,
               },
             ]}
           >
             O código expira em {expiresInMinutes} minutos e pode ser utilizado apenas uma vez.
           </Text>
 
-          {/* FORMULÁRIO */}
+          {/*
+           * FORMULÁRIO
+           */}
           <View
-            style={
-              styles.form
-            }
+            style={[
+              styles.formCard,
+              {
+                backgroundColor:
+                  cardBackground,
+
+                borderColor:
+                  cardBorderColor,
+
+                shadowColor:
+                  darkMode
+                    ? COLORS.darkBackground
+                    : COLORS.navyBlue,
+              },
+            ]}
           >
+            <View
+              style={
+                styles.formTitleContainer
+              }
+            >
+              <Ionicons
+                name="keypad-outline"
+                size={20}
+                color={
+                  COLORS.primary
+                }
+              />
+
+              <Text
+                style={[
+                  styles.formTitle,
+                  {
+                    color:
+                      mainTextColor,
+                  },
+                ]}
+              >
+                Confirme o código
+              </Text>
+            </View>
+
             <Text
               style={[
                 styles.label,
                 {
                   color:
-                    theme.text,
+                    mainTextColor,
                 },
               ]}
             >
@@ -521,23 +692,43 @@ export default function LoginVerificationScreen() {
               }
             />
 
-            <Text
-              style={[
-                styles.codeCounter,
-                {
-                  color:
-                    verificationCode
-                      .length === 6
-                      ? theme.primary
-                      : theme
-                          .textSecondary,
-                },
-              ]}
+            <View
+              style={
+                styles.codeInformationRow
+              }
             >
-              {verificationCode.length}/6
-            </Text>
+              <Text
+                style={[
+                  styles.codeHint,
+                  {
+                    color:
+                      secondaryTextColor,
+                  },
+                ]}
+              >
+                Digite somente os números.
+              </Text>
 
-            {/* CONFIRMAR */}
+              <Text
+                style={[
+                  styles.codeCounter,
+                  {
+                    color:
+                      verificationCode
+                        .length ===
+                      6
+                        ? COLORS.accent
+                        : secondaryTextColor,
+                  },
+                ]}
+              >
+                {verificationCode.length}/6
+              </Text>
+            </View>
+
+            {/*
+             * CONFIRMAR
+             */}
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={
@@ -546,7 +737,8 @@ export default function LoginVerificationScreen() {
               disabled={
                 loading ||
                 verificationCode
-                  .length !== 6
+                  .length !==
+                  6
               }
               accessibilityRole="button"
               accessibilityLabel="Confirmar código de verificação"
@@ -554,15 +746,16 @@ export default function LoginVerificationScreen() {
                 styles.confirmButton,
                 {
                   backgroundColor:
-                    theme.primary,
+                    COLORS.primary,
 
                   shadowColor:
-                    theme.primary,
+                    COLORS.darkBlue,
 
                   opacity:
                     loading ||
                     verificationCode
-                      .length !== 6
+                      .length !==
+                      6
                       ? 0.55
                       : 1,
                 },
@@ -571,7 +764,9 @@ export default function LoginVerificationScreen() {
               {loading ? (
                 <ActivityIndicator
                   size="small"
-                  color="#ffffff"
+                  color={
+                    COLORS.white
+                  }
                 />
               ) : (
                 <>
@@ -586,7 +781,9 @@ export default function LoginVerificationScreen() {
                   <Ionicons
                     name="checkmark-circle-outline"
                     size={21}
-                    color="#ffffff"
+                    color={
+                      COLORS.white
+                    }
                     style={
                       styles.confirmButtonIcon
                     }
@@ -595,7 +792,9 @@ export default function LoginVerificationScreen() {
               )}
             </TouchableOpacity>
 
-            {/* CANCELAR */}
+            {/*
+             * CANCELAR
+             */}
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={
@@ -606,21 +805,27 @@ export default function LoginVerificationScreen() {
               }
               accessibilityRole="button"
               accessibilityLabel="Cancelar e voltar ao login"
-              style={
-                styles.cancelButton
-              }
+              style={[
+                styles.cancelButton,
+                {
+                  borderColor:
+                    COLORS.primary,
+
+                  opacity:
+                    loading
+                      ? 0.6
+                      : 1,
+                },
+              ]}
             >
               <Text
                 style={[
                   styles.cancelButtonText,
                   {
                     color:
-                      theme.textSecondary,
-
-                    opacity:
-                      loading
-                        ? 0.6
-                        : 1,
+                      darkMode
+                        ? COLORS.lightBlue
+                        : COLORS.darkBlue,
                   },
                 ]}
               >
@@ -629,37 +834,43 @@ export default function LoginVerificationScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* AVISO */}
+          {/*
+           * AVISO DE SEGURANÇA
+           */}
           <View
             style={[
               styles.warningContainer,
               {
                 backgroundColor:
                   darkMode
-                    ? 'rgba(245, 158, 11, 0.10)'
-                    : '#fffbeb',
+                    ? COLORS.navyBlue
+                    : COLORS.white,
 
                 borderColor:
-                  darkMode
-                    ? 'rgba(245, 158, 11, 0.30)'
-                    : '#fde68a',
+                  COLORS.accent,
               },
             ]}
           >
-            <Ionicons
-              name="warning-outline"
-              size={21}
-              color="#f59e0b"
-            />
+            <View
+              style={
+                styles.warningIconContainer
+              }
+            >
+              <Ionicons
+                name="warning-outline"
+                size={21}
+                color={
+                  COLORS.white
+                }
+              />
+            </View>
 
             <Text
               style={[
                 styles.warningText,
                 {
                   color:
-                    darkMode
-                      ? '#fcd34d'
-                      : '#92400e',
+                    secondaryTextColor,
                 },
               ]}
             >
@@ -674,6 +885,9 @@ export default function LoginVerificationScreen() {
 
 const styles =
   StyleSheet.create({
+    /*
+     * TELA
+     */
     safeArea: {
       flex:
         1,
@@ -684,6 +898,9 @@ const styles =
         1,
     },
 
+    /*
+     * BOTÃO VOLTAR
+     */
     backButton: {
       position:
         'absolute',
@@ -719,7 +936,7 @@ const styles =
         22,
 
       shadowColor:
-        '#000000',
+        COLORS.darkBackground,
 
       shadowOffset: {
         width:
@@ -730,15 +947,18 @@ const styles =
       },
 
       shadowOpacity:
-        0.08,
+        0.13,
 
       shadowRadius:
         6,
 
       elevation:
-        3,
+        4,
     },
 
+    /*
+     * CONTEÚDO
+     */
     scrollContent: {
       flexGrow:
         1,
@@ -750,47 +970,168 @@ const styles =
         'center',
 
       paddingHorizontal:
-        26,
+        24,
 
       paddingTop:
         Platform.OS ===
         'android'
-          ? 90
-          : 78,
+          ? 82
+          : 72,
 
       paddingBottom:
         Platform.OS ===
         'android'
-          ? 40
-          : 30,
+          ? 36
+          : 28,
     },
 
-    securityIconContainer: {
+    /*
+     * ÁREA DA LOGO
+     */
+    logoArea: {
+      position:
+        'relative',
+
       width:
-        94,
+        '100%',
+
+      maxWidth:
+        330,
 
       height:
-        94,
+        116,
 
       alignItems:
         'center',
 
       justifyContent:
         'center',
+
+      overflow:
+        'hidden',
+
+      paddingHorizontal:
+        28,
+
+      borderRadius:
+        25,
+
+      backgroundColor:
+        COLORS.navyBlue,
+
+      shadowColor:
+        COLORS.darkBlue,
+
+      shadowOffset: {
+        width:
+          0,
+
+        height:
+          8,
+      },
+
+      shadowOpacity:
+        0.22,
+
+      shadowRadius:
+        13,
+
+      elevation:
+        7,
+    },
+
+    logoDecorationOne: {
+      position:
+        'absolute',
+
+      top:
+        -62,
+
+      right:
+        -38,
+
+      width:
+        155,
+
+      height:
+        155,
+
+      borderRadius:
+        78,
+
+      backgroundColor:
+        COLORS.darkBlue,
+
+      opacity:
+        0.7,
+    },
+
+    logoDecorationTwo: {
+      position:
+        'absolute',
+
+      bottom:
+        -58,
+
+      left:
+        -38,
+
+      width:
+        135,
+
+      height:
+        135,
+
+      borderRadius:
+        68,
+
+      backgroundColor:
+        COLORS.accent,
+
+      opacity:
+        0.48,
+    },
+
+    logoImage: {
+      width:
+        '100%',
+
+      height:
+        80,
+    },
+
+    /*
+     * ÍCONE DE SEGURANÇA
+     */
+    securityIconOuter: {
+      width:
+        88,
+
+      height:
+        88,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      marginTop:
+        28,
 
       borderWidth:
         1,
 
       borderRadius:
-        47,
+        44,
     },
 
-    securityIcon: {
+    securityIconInner: {
       width:
-        64,
+        60,
 
       height:
-        64,
+        60,
 
       alignItems:
         'center',
@@ -799,7 +1140,13 @@ const styles =
         'center',
 
       borderRadius:
-        32,
+        30,
+
+      backgroundColor:
+        COLORS.primary,
+
+      shadowColor:
+        COLORS.darkBlue,
 
       shadowOffset: {
         width:
@@ -810,7 +1157,7 @@ const styles =
       },
 
       shadowOpacity:
-        0.22,
+        0.25,
 
       shadowRadius:
         10,
@@ -819,9 +1166,15 @@ const styles =
         6,
     },
 
+    /*
+     * TEXTOS
+     */
     title: {
+      maxWidth:
+        335,
+
       marginTop:
-        26,
+        21,
 
       fontSize:
         25,
@@ -830,7 +1183,7 @@ const styles =
         32,
 
       fontWeight:
-        '800',
+        '900',
 
       textAlign:
         'center',
@@ -838,7 +1191,7 @@ const styles =
 
     description: {
       marginTop:
-        13,
+        12,
 
       fontSize:
         14,
@@ -846,22 +1199,57 @@ const styles =
       lineHeight:
         21,
 
+      fontWeight:
+        '500',
+
       textAlign:
         'center',
     },
 
-    emailText: {
-      marginTop:
-        5,
+    /*
+     * E-MAIL
+     */
+    emailContainer: {
+      maxWidth:
+        '100%',
 
-      fontSize:
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      marginTop:
+        10,
+
+      paddingHorizontal:
         15,
 
+      paddingVertical:
+        10,
+
+      borderWidth:
+        1,
+
+      borderRadius:
+        20,
+    },
+
+    emailText: {
+      marginLeft:
+        8,
+
+      fontSize:
+        14,
+
       lineHeight:
-        22,
+        20,
 
       fontWeight:
-        '800',
+        '900',
 
       textAlign:
         'center',
@@ -872,7 +1260,7 @@ const styles =
         315,
 
       marginTop:
-        12,
+        13,
 
       fontSize:
         12,
@@ -880,16 +1268,79 @@ const styles =
       lineHeight:
         18,
 
+      fontWeight:
+        '500',
+
       textAlign:
         'center',
     },
 
-    form: {
+    /*
+     * FORMULÁRIO
+     */
+    formCard: {
       width:
         '100%',
 
       marginTop:
-        32,
+        27,
+
+      paddingHorizontal:
+        19,
+
+      paddingTop:
+        21,
+
+      paddingBottom:
+        19,
+
+      borderWidth:
+        1,
+
+      borderRadius:
+        22,
+
+      shadowOffset: {
+        width:
+          0,
+
+        height:
+          9,
+      },
+
+      shadowOpacity:
+        0.12,
+
+      shadowRadius:
+        15,
+
+      elevation:
+        5,
+    },
+
+    formTitleContainer: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      marginBottom:
+        20,
+    },
+
+    formTitle: {
+      marginLeft:
+        8,
+
+      fontSize:
+        17,
+
+      lineHeight:
+        23,
+
+      fontWeight:
+        '900',
     },
 
     label: {
@@ -906,19 +1357,38 @@ const styles =
         20,
 
       fontWeight:
-        '700',
+        '800',
+    },
+
+    codeInformationRow: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'space-between',
+
+      marginTop:
+        7,
+
+      paddingHorizontal:
+        4,
+    },
+
+    codeHint: {
+      fontSize:
+        11,
+
+      lineHeight:
+        17,
+
+      fontWeight:
+        '500',
     },
 
     codeCounter: {
-      alignSelf:
-        'flex-end',
-
-      marginTop:
-        6,
-
-      marginRight:
-        4,
-
       fontSize:
         12,
 
@@ -926,9 +1396,12 @@ const styles =
         18,
 
       fontWeight:
-        '700',
+        '900',
     },
 
+    /*
+     * BOTÃO CONFIRMAR
+     */
     confirmButton: {
       width:
         '100%',
@@ -946,7 +1419,7 @@ const styles =
         'center',
 
       marginTop:
-        22,
+        20,
 
       paddingHorizontal:
         22,
@@ -963,7 +1436,7 @@ const styles =
       },
 
       shadowOpacity:
-        0.22,
+        0.26,
 
       shadowRadius:
         12,
@@ -974,7 +1447,7 @@ const styles =
 
     confirmButtonText: {
       color:
-        '#ffffff',
+        COLORS.white,
 
       fontSize:
         16,
@@ -983,7 +1456,7 @@ const styles =
         23,
 
       fontWeight:
-        '800',
+        '900',
 
       textAlign:
         'center',
@@ -994,9 +1467,15 @@ const styles =
         9,
     },
 
+    /*
+     * BOTÃO CANCELAR
+     */
     cancelButton: {
+      width:
+        '100%',
+
       minHeight:
-        44,
+        48,
 
       alignItems:
         'center',
@@ -1005,10 +1484,16 @@ const styles =
         'center',
 
       marginTop:
-        10,
+        12,
 
       paddingHorizontal:
         14,
+
+      borderWidth:
+        1,
+
+      borderRadius:
+        24,
     },
 
     cancelButtonText: {
@@ -1019,12 +1504,15 @@ const styles =
         20,
 
       fontWeight:
-        '700',
+        '800',
 
       textAlign:
         'center',
     },
 
+    /*
+     * AVISO
+     */
     warningContainer: {
       width:
         '100%',
@@ -1036,10 +1524,10 @@ const styles =
         'flex-start',
 
       marginTop:
-        25,
+        22,
 
       paddingHorizontal:
-        15,
+        14,
 
       paddingVertical:
         14,
@@ -1049,6 +1537,26 @@ const styles =
 
       borderRadius:
         14,
+    },
+
+    warningIconContainer: {
+      width:
+        34,
+
+      height:
+        34,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      borderRadius:
+        17,
+
+      backgroundColor:
+        COLORS.accent,
     },
 
     warningText: {
@@ -1063,5 +1571,9 @@ const styles =
 
       lineHeight:
         18,
+
+      fontWeight:
+        '500',
     },
   });
+``

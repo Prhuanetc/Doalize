@@ -14,6 +14,7 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 
 import {
@@ -33,6 +34,38 @@ import {
 import {
   useTheme,
 } from '../../hooks/useTheme';
+
+import logo from '../../../assets/logo.png';
+
+/*
+ * PALETA OFICIAL
+ * DO DOALIZE
+ */
+const COLORS = {
+  lightBlue:
+    '#44AFDD',
+
+  primary:
+    '#3594BD',
+
+  darkBlue:
+    '#166892',
+
+  navyBlue:
+    '#1D5D76',
+
+  lightBackground:
+    '#E1E1E1',
+
+  darkBackground:
+    '#0B0B0F',
+
+  accent:
+    '#22869C',
+
+  white:
+    '#FFFFFF',
+};
 
 export default function LoginScreen() {
   const navigation =
@@ -63,6 +96,35 @@ export default function LoginScreen() {
   ] = useState(false);
 
   /*
+   * CORES ADAPTADAS
+   * AO TEMA
+   */
+  const screenBackground =
+    darkMode
+      ? COLORS.darkBackground
+      : COLORS.lightBackground;
+
+  const cardBackground =
+    darkMode
+      ? COLORS.darkBackground
+      : COLORS.white;
+
+  const mainTextColor =
+    darkMode
+      ? COLORS.white
+      : COLORS.darkBackground;
+
+  const secondaryTextColor =
+    darkMode
+      ? COLORS.lightBackground
+      : COLORS.navyBlue;
+
+  const borderColor =
+    darkMode
+      ? COLORS.navyBlue
+      : COLORS.lightBlue;
+
+  /*
    * REALIZAR LOGIN
    */
   async function handleLogin() {
@@ -88,7 +150,9 @@ export default function LoginScreen() {
     }
 
     try {
-      setLoading(true);
+      setLoading(
+        true
+      );
 
       const response =
         await signIn(
@@ -114,12 +178,10 @@ export default function LoginScreen() {
       /*
        * VERIFICAÇÃO EM DUAS ETAPAS
        *
-       * Quando estiver ativada, signIn
-       * ainda não salva uma sessão.
-       *
-       * O desafio temporário foi armazenado
-       * no AuthContext e será usado pela
-       * tela de confirmação.
+       * Quando estiver ativada, o
+       * AuthContext guarda o desafio
+       * temporário, mas não cria uma
+       * sessão definitiva ainda.
        */
       if (
         response
@@ -146,12 +208,9 @@ export default function LoginScreen() {
       /*
        * LOGIN COMUM
        *
-       * Não é necessário navegar
-       * manualmente para o Feed.
-       *
        * O AuthContext salva o usuário
-       * e o Navigation troca para
-       * AppRoutes automaticamente.
+       * e o navegador raiz abre as
+       * rotas autenticadas.
        */
       console.log(
         'LOGIN REALIZADO COM SUCESSO'
@@ -175,12 +234,15 @@ export default function LoginScreen() {
 
       Alert.alert(
         'Erro',
-        error.response?.data
+        error.response
+          ?.data
           ?.message ||
           'Não foi possível fazer login.'
       );
     } finally {
-      setLoading(false);
+      setLoading(
+        false
+      );
     }
   }
 
@@ -245,7 +307,7 @@ export default function LoginScreen() {
         styles.safeArea,
         {
           backgroundColor:
-            theme.background,
+            screenBackground,
         },
       ]}
     >
@@ -256,7 +318,7 @@ export default function LoginScreen() {
             : 'dark-content'
         }
         backgroundColor={
-          theme.background
+          screenBackground
         }
       />
 
@@ -265,14 +327,14 @@ export default function LoginScreen() {
           styles.container
         }
         behavior={
-          Platform.OS === 'ios'
+          Platform.OS ===
+          'ios'
             ? 'padding'
             : undefined
         }
       >
-        {/* BOTÃO VOLTAR */}
         <TouchableOpacity
-          activeOpacity={0.7}
+          activeOpacity={0.72}
           onPress={
             handleBack
           }
@@ -285,12 +347,9 @@ export default function LoginScreen() {
             styles.backButton,
             {
               backgroundColor:
-                darkMode
-                  ? theme.card
-                  : '#ffffff',
+                cardBackground,
 
-              borderColor:
-                theme.border,
+              borderColor,
 
               opacity:
                 loading
@@ -301,9 +360,11 @@ export default function LoginScreen() {
         >
           <Ionicons
             name="arrow-back"
-            size={24}
+            size={23}
             color={
-              theme.text
+              darkMode
+                ? COLORS.lightBlue
+                : COLORS.darkBlue
             }
           />
         </TouchableOpacity>
@@ -318,66 +379,53 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/* IDENTIDADE */}
+          {/*
+           * IDENTIDADE VISUAL
+           *
+           * logo.png possui fundo
+           * transparente e texto branco.
+           */}
           <View
             style={
-              styles.logoContainer
+              styles.identityContainer
             }
           >
             <View
-              style={[
-                styles.logoSymbol,
-                {
-                  backgroundColor:
-                    darkMode
-                      ? 'rgba(91, 141, 239, 0.16)'
-                      : 'rgba(37, 99, 235, 0.10)',
-
-                  borderColor:
-                    darkMode
-                      ? 'rgba(108, 153, 241, 0.27)'
-                      : 'rgba(37, 99, 235, 0.15)',
-                },
-              ]}
+              style={
+                styles.logoArea
+              }
             >
               <View
-                style={[
-                  styles.heartContainer,
-                  {
-                    backgroundColor:
-                      theme.primary,
+                style={
+                  styles.logoDecorationOne
+                }
+              />
 
-                    shadowColor:
-                      theme.primary,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="heart"
-                  size={30}
-                  color="#ffffff"
-                />
-              </View>
+              <View
+                style={
+                  styles.logoDecorationTwo
+                }
+              />
+
+              <Image
+                source={
+                  logo
+                }
+                style={
+                  styles.logoImage
+                }
+                resizeMode="contain"
+                accessible
+                accessibilityLabel="Doalize"
+              />
             </View>
-
-            <Text
-              style={[
-                styles.logo,
-                {
-                  color:
-                    theme.text,
-                },
-              ]}
-            >
-              Doalize
-            </Text>
 
             <Text
               style={[
                 styles.title,
                 {
                   color:
-                    theme.text,
+                    mainTextColor,
                 },
               ]}
             >
@@ -389,7 +437,7 @@ export default function LoginScreen() {
                 styles.subtitle,
                 {
                   color:
-                    theme.textSecondary,
+                    secondaryTextColor,
                 },
               ]}
             >
@@ -397,28 +445,58 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* FORMULÁRIO */}
+          {/*
+           * FORMULÁRIO
+           */}
           <View
-            style={
-              styles.form
-            }
+            style={[
+              styles.formCard,
+              {
+                backgroundColor:
+                  cardBackground,
+
+                borderColor:
+                  darkMode
+                    ? COLORS.navyBlue
+                    : COLORS.white,
+
+                shadowColor:
+                  darkMode
+                    ? COLORS.darkBackground
+                    : COLORS.navyBlue,
+              },
+            ]}
           >
             <View
               style={
                 styles.fieldContainer
               }
             >
-              <Text
-                style={[
-                  styles.label,
-                  {
-                    color:
-                      theme.text,
-                  },
-                ]}
+              <View
+                style={
+                  styles.labelContainer
+                }
               >
-                E-mail
-              </Text>
+                <Ionicons
+                  name="mail-outline"
+                  size={17}
+                  color={
+                    COLORS.primary
+                  }
+                />
+
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color:
+                        mainTextColor,
+                    },
+                  ]}
+                >
+                  E-mail
+                </Text>
+              </View>
 
               <Input
                 placeholder="Digite seu e-mail"
@@ -444,17 +522,31 @@ export default function LoginScreen() {
                 styles.fieldContainer
               }
             >
-              <Text
-                style={[
-                  styles.label,
-                  {
-                    color:
-                      theme.text,
-                  },
-                ]}
+              <View
+                style={
+                  styles.labelContainer
+                }
               >
-                Senha
-              </Text>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={17}
+                  color={
+                    COLORS.primary
+                  }
+                />
+
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color:
+                        mainTextColor,
+                    },
+                  ]}
+                >
+                  Senha
+                </Text>
+              </View>
 
               <Input
                 placeholder="Digite sua senha"
@@ -477,7 +569,6 @@ export default function LoginScreen() {
               />
             </View>
 
-            {/* ESQUECI A SENHA */}
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={
@@ -497,7 +588,9 @@ export default function LoginScreen() {
                   styles.forgotPasswordText,
                   {
                     color:
-                      theme.primary,
+                      darkMode
+                        ? COLORS.lightBlue
+                        : COLORS.darkBlue,
 
                     opacity:
                       loading
@@ -510,7 +603,6 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* ENTRAR */}
             <TouchableOpacity
               activeOpacity={0.82}
               onPress={
@@ -525,10 +617,10 @@ export default function LoginScreen() {
                 styles.loginButton,
                 {
                   backgroundColor:
-                    theme.primary,
+                    COLORS.primary,
 
                   shadowColor:
-                    theme.primary,
+                    COLORS.darkBlue,
 
                   opacity:
                     loading
@@ -540,7 +632,9 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator
                   size="small"
-                  color="#ffffff"
+                  color={
+                    COLORS.white
+                  }
                 />
               ) : (
                 <>
@@ -555,7 +649,9 @@ export default function LoginScreen() {
                   <Ionicons
                     name="arrow-forward"
                     size={20}
-                    color="#ffffff"
+                    color={
+                      COLORS.white
+                    }
                     style={
                       styles.loginButtonIcon
                     }
@@ -565,7 +661,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* CADASTRO */}
+          {/*
+           * CADASTRO
+           */}
           <View
             style={
               styles.footer
@@ -576,7 +674,7 @@ export default function LoginScreen() {
                 styles.footerText,
                 {
                   color:
-                    theme.textSecondary,
+                    secondaryTextColor,
                 },
               ]}
             >
@@ -602,7 +700,9 @@ export default function LoginScreen() {
                   styles.registerText,
                   {
                     color:
-                      theme.primary,
+                      darkMode
+                        ? COLORS.lightBlue
+                        : COLORS.darkBlue,
 
                     opacity:
                       loading
@@ -614,6 +714,48 @@ export default function LoginScreen() {
                 Criar conta
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/*
+           * AVISO DE SEGURANÇA
+           */}
+          <View
+            style={[
+              styles.securityNotice,
+              {
+                backgroundColor:
+                  darkMode
+                    ? COLORS.navyBlue
+                    : COLORS.white,
+
+                borderColor:
+                  darkMode
+                    ? COLORS.accent
+                    : COLORS.lightBlue,
+              },
+            ]}
+          >
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={19}
+              color={
+                darkMode
+                  ? COLORS.lightBlue
+                  : COLORS.darkBlue
+              }
+            />
+
+            <Text
+              style={[
+                styles.securityNoticeText,
+                {
+                  color:
+                    secondaryTextColor,
+                },
+              ]}
+            >
+              Sua conta pode utilizar verificação em duas etapas para aumentar a segurança do login.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -671,7 +813,7 @@ const styles =
         22,
 
       shadowColor:
-        '#000000',
+        COLORS.darkBackground,
 
       shadowOffset: {
         width:
@@ -682,15 +824,18 @@ const styles =
       },
 
       shadowOpacity:
-        0.08,
+        0.13,
 
       shadowRadius:
         6,
 
       elevation:
-        3,
+        4,
     },
 
+    /*
+     * CONTEÚDO
+     */
     scrollContent: {
       flexGrow:
         1,
@@ -699,25 +844,25 @@ const styles =
         'center',
 
       paddingHorizontal:
-        26,
+        24,
 
       paddingTop:
         Platform.OS ===
         'android'
-          ? 86
-          : 76,
+          ? 82
+          : 72,
 
       paddingBottom:
         Platform.OS ===
         'android'
-          ? 40
-          : 30,
+          ? 34
+          : 28,
     },
 
     /*
      * IDENTIDADE
      */
-    logoContainer: {
+    identityContainer: {
       width:
         '100%',
 
@@ -725,12 +870,18 @@ const styles =
         'center',
     },
 
-    logoSymbol: {
+    logoArea: {
+      position:
+        'relative',
+
       width:
-        84,
+        '100%',
+
+      maxWidth:
+        330,
 
       height:
-        84,
+        138,
 
       alignItems:
         'center',
@@ -738,79 +889,111 @@ const styles =
       justifyContent:
         'center',
 
-      marginBottom:
-        16,
+      overflow:
+        'hidden',
 
-      borderWidth:
-        1,
-
-      borderRadius:
-        42,
-    },
-
-    heartContainer: {
-      width:
-        58,
-
-      height:
-        58,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
+      paddingHorizontal:
+        26,
 
       borderRadius:
-        29,
+        27,
+
+      backgroundColor:
+        COLORS.navyBlue,
+
+      shadowColor:
+        COLORS.darkBlue,
 
       shadowOffset: {
         width:
           0,
 
         height:
-          7,
+          9,
       },
 
       shadowOpacity:
-        0.22,
+        0.24,
 
       shadowRadius:
-        10,
+        14,
 
       elevation:
-        6,
+        7,
     },
 
-    logo: {
-      fontSize:
-        37,
+    logoDecorationOne: {
+      position:
+        'absolute',
 
-      lineHeight:
-        45,
+      top:
+        -65,
 
-      fontWeight:
-        '900',
+      right:
+        -40,
 
-      letterSpacing:
-        0.3,
+      width:
+        165,
 
-      textAlign:
-        'center',
+      height:
+        165,
+
+      borderRadius:
+        83,
+
+      backgroundColor:
+        COLORS.darkBlue,
+
+      opacity:
+        0.72,
+    },
+
+    logoDecorationTwo: {
+      position:
+        'absolute',
+
+      bottom:
+        -60,
+
+      left:
+        -35,
+
+      width:
+        140,
+
+      height:
+        140,
+
+      borderRadius:
+        70,
+
+      backgroundColor:
+        COLORS.accent,
+
+      opacity:
+        0.47,
+    },
+
+    logoImage: {
+      width:
+        '100%',
+
+      height:
+        92,
     },
 
     title: {
       marginTop:
-        28,
+        27,
 
       fontSize:
-        24,
+        25,
 
       lineHeight:
-        31,
+        32,
 
       fontWeight:
-        '800',
+        '900',
 
       textAlign:
         'center',
@@ -829,6 +1012,9 @@ const styles =
       lineHeight:
         21,
 
+      fontWeight:
+        '500',
+
       textAlign:
         'center',
     },
@@ -836,12 +1022,44 @@ const styles =
     /*
      * FORMULÁRIO
      */
-    form: {
+    formCard: {
       width:
         '100%',
 
       marginTop:
-        34,
+        27,
+
+      paddingHorizontal:
+        19,
+
+      paddingTop:
+        22,
+
+      paddingBottom:
+        20,
+
+      borderWidth:
+        1,
+
+      borderRadius:
+        22,
+
+      shadowOffset: {
+        width:
+          0,
+
+        height:
+          9,
+      },
+
+      shadowOpacity:
+        0.12,
+
+      shadowRadius:
+        15,
+
+      elevation:
+        5,
     },
 
     fieldContainer: {
@@ -852,12 +1070,23 @@ const styles =
         17,
     },
 
-    label: {
+    labelContainer: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
       marginBottom:
         8,
 
       marginLeft:
         3,
+    },
+
+    label: {
+      marginLeft:
+        7,
 
       fontSize:
         14,
@@ -866,7 +1095,7 @@ const styles =
         20,
 
       fontWeight:
-        '700',
+        '800',
     },
 
     forgotPasswordButton: {
@@ -883,10 +1112,10 @@ const styles =
         'center',
 
       marginTop:
-        -3,
+        -4,
 
       marginBottom:
-        18,
+        15,
 
       paddingHorizontal:
         3,
@@ -900,7 +1129,7 @@ const styles =
         19,
 
       fontWeight:
-        '700',
+        '800',
     },
 
     /*
@@ -937,7 +1166,7 @@ const styles =
       },
 
       shadowOpacity:
-        0.22,
+        0.26,
 
       shadowRadius:
         12,
@@ -948,7 +1177,7 @@ const styles =
 
     loginButtonText: {
       color:
-        '#ffffff',
+        COLORS.white,
 
       fontSize:
         17,
@@ -957,7 +1186,7 @@ const styles =
         23,
 
       fontWeight:
-        '800',
+        '900',
 
       textAlign:
         'center',
@@ -988,7 +1217,7 @@ const styles =
         'center',
 
       marginTop:
-        28,
+        24,
 
       paddingHorizontal:
         8,
@@ -1030,9 +1259,55 @@ const styles =
         20,
 
       fontWeight:
-        '800',
+        '900',
 
       textAlign:
         'center',
+    },
+
+    /*
+     * AVISO DE SEGURANÇA
+     */
+    securityNotice: {
+      width:
+        '100%',
+
+      flexDirection:
+        'row',
+
+      alignItems:
+        'flex-start',
+
+      marginTop:
+        18,
+
+      paddingHorizontal:
+        14,
+
+      paddingVertical:
+        13,
+
+      borderWidth:
+        1,
+
+      borderRadius:
+        14,
+    },
+
+    securityNoticeText: {
+      flex:
+        1,
+
+      marginLeft:
+        9,
+
+      fontSize:
+        11,
+
+      lineHeight:
+        17,
+
+      fontWeight:
+        '500',
     },
   });
