@@ -1,221 +1,154 @@
 import React from 'react';
-
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  SafeAreaView,
-  StyleSheet,
-  StatusBar,
-  Image,
+    View,
+    Text,
+    TouchableOpacity,
+    SafeAreaView,
+    StyleSheet,
+    StatusBar,
+    Image,
 } from 'react-native';
 
 import {
-  useNavigation,
+    useNavigation,
 } from '@react-navigation/native';
 
 import {
-  useTheme,
+    useTheme,
 } from '../../hooks/useTheme';
 
-
-/*
- * ============================================================
- * WELCOME SCREEN
- * ============================================================
- *
- * Tela inicial de entrada do Doalize.
- *
- * Aparência:
- *
- * - Dark Mode;
- * - fundo #141414;
- * - logo oficial em PNG;
- * - "Doalize" e "Seja Bem Vindo!" vêm da própria imagem;
- * - dois botões centralizados;
- * - visual simples, plano e harmonioso;
- * - sem logo criada por ícone;
- * - sem textos duplicados.
- *
- * A navegação original foi preservada.
- */
-
 export default function WelcomeScreen() {
+    const navigation = useNavigation();
+    const { theme, } = useTheme();
 
-  const navigation = useNavigation();
+    /*
+     * ============================================================
+     * ABRIR LOGIN
+     * ============================================================
+     */
 
-  const {
-    theme,
-    darkMode,
-  } = useTheme();
+    function handleOpenLogin() {
+        navigation.navigate(
+            'LoginScreen'
+        );
+    }
 
+    /*
+     * ============================================================
+     * ABRIR CADASTRO
+     * ============================================================
+     */
 
-  /*
-   * ============================================================
-   * ABRIR LOGIN
-   * ============================================================
-   */
-  function handleOpenLogin() {
-    navigation.navigate(
-      'LoginScreen'
-    );
-  }
+    function handleOpenRegister() {
+        navigation.navigate(
+            'RegisterScreen'
+        );
+    }
 
-
-  /*
-   * ============================================================
-   * ABRIR CADASTRO
-   * ============================================================
-   */
-  function handleOpenRegister() {
-    navigation.navigate(
-      'RegisterScreen'
-    );
-  }
-
-
-  return (
-    <SafeAreaView
-      style={[
-        styles.container,
-        {
-          backgroundColor: '#141414',
-        },
-      ]}
-    >
-
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#141414"
-      />
-
-
-      {/* ======================================================
-          CONTEÚDO PRINCIPAL
-          ====================================================== */}
-
-      <View
-        style={
-          styles.content
-        }
-      >
-
-        {/* ====================================================
-            COMPOSIÇÃO CENTRAL
-            ==================================================== */}
-
-        <View
-          style={
-            styles.mainContent
-          }
+    return (
+        <SafeAreaView
+            style={[
+                styles.container,
+                {
+                    backgroundColor: '#141414',
+                },
+            ]}
         >
+            <StatusBar
+                barStyle="light-content"
+                backgroundColor="#141414"
+            />
 
-          {/* ==================================================
-              LOGO OFICIAL DO DOALIZE
-              ==================================================
+            {/* ======================================================
+                CONTEÚDO COMPLETO
+            ====================================================== */}
 
-              Caminho correto:
-
-              src/screens/Auth/WelcomeScreen.js
-                    ↓
-              ../../..
-                    ↓
-              assets/logosejabemvindo.png
-
-              A imagem já contém:
-              - coração;
-              - Doalize;
-              - Seja Bem Vindo!
-              ================================================== */}
-
-          <Image
-            source={
-              require(
-                '../../../assets/logosejabemvindo.png'
-              )
-            }
-            style={
-              styles.logoImage
-            }
-            resizeMode="contain"
-            accessible={true}
-            accessibilityLabel="Doalize, seja bem-vindo"
-          />
-
-
-          {/* ==================================================
-              BOTÕES
-              ================================================== */}
-
-          <View
-            style={
-              styles.actionsContainer
-            }
-          >
-
-            {/* =================================================
-                ENTRAR
-                ================================================= */}
-
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={
-                handleOpenLogin
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Entrar na conta"
-              style={
-                styles.primaryButton
-              }
+            <View
+                style={styles.content}
             >
 
-              <Text
-                style={
-                  styles.primaryButtonText
-                }
-              >
-                Entrar
-              </Text>
+                {/* ====================================================
+                    BLOCO CENTRAL
+                ==================================================== */}
 
-            </TouchableOpacity>
+                <View
+                    style={styles.mainContent}
+                >
 
+                    {/* ==================================================
+                        LOGO OFICIAL
 
-            {/* =================================================
-                CADASTRAR
-                ================================================= */}
+                        O arquivo já contém:
+                        - coração;
+                        - Doalize;
+                        - Seja Bem Vindo!
 
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={
-                handleOpenRegister
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Criar uma conta"
-              style={
-                styles.secondaryButton
-              }
-            >
+                        Não existe nenhum texto separado.
+                    ================================================== */}
 
-              <Text
-                style={
-                  styles.secondaryButtonText
-                }
-              >
-                Cadastrar
-              </Text>
+                    <Image
+                        source={require(
+                            '../../../assets/logosejabemvindo.png'
+                        )}
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                        accessible={true}
+                        accessibilityLabel="Doalize, seja bem-vindo"
+                    />
 
-            </TouchableOpacity>
+                    {/* ==================================================
+                        BOTÕES
+                    ================================================== */}
 
-          </View>
+                    <View
+                        style={styles.actionsContainer}
+                    >
 
-        </View>
+                        {/* =================================================
+                            ENTRAR
+                        ================================================= */}
 
-      </View>
+                        <TouchableOpacity
+                            activeOpacity={0.82}
+                            onPress={handleOpenLogin}
+                            accessibilityRole="button"
+                            accessibilityLabel="Entrar na conta"
+                            style={styles.primaryButton}
+                        >
+                            <Text
+                                style={styles.primaryButtonText}
+                            >
+                                Entrar
+                            </Text>
+                        </TouchableOpacity>
 
-    </SafeAreaView>
-  );
+                        {/* =================================================
+                            CADASTRAR
+                        ================================================= */}
+
+                        <TouchableOpacity
+                            activeOpacity={0.82}
+                            onPress={handleOpenRegister}
+                            accessibilityRole="button"
+                            accessibilityLabel="Criar uma conta"
+                            style={styles.secondaryButton}
+                        >
+                            <Text
+                                style={styles.secondaryButtonText}
+                            >
+                                Cadastrar
+                            </Text>
+                        </TouchableOpacity>
+
+                    </View>
+
+                </View>
+
+            </View>
+
+        </SafeAreaView>
+    );
 }
-
 
 /*
  * ============================================================
@@ -223,177 +156,163 @@ export default function WelcomeScreen() {
  * ============================================================
  */
 
-const styles =
-  StyleSheet.create({
+const styles = StyleSheet.create({
 
     /*
      * ========================================================
      * TELA
      * ========================================================
      */
+
     container: {
-      flex: 1,
-
-      width: '100%',
-
-      backgroundColor: '#141414',
+        flex: 1,
+        width: '100%',
+        backgroundColor: '#141414',
+        overflow: 'hidden',
     },
-
 
     /*
      * ========================================================
-     * CONTEÚDO
+     * CONTEÚDO PRINCIPAL
      * ========================================================
      *
-     * Centraliza todo o conjunto:
+     * O conteúdo inteiro é centralizado na área disponível.
      *
-     * logo
-     * +
-     * botões
+     * Não existe mais marginTop calculado manualmente.
      *
-     * Isso evita que a retirada dos textos separados deixe
-     * a composição visual desalinhada.
+     * Isso evita que os botões sejam empurrados para fora
+     * da tela em aparelhos com alturas diferentes.
      */
+
     content: {
-      flex: 1,
-
-      width: '100%',
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      paddingHorizontal: 24,
-
-      paddingVertical: 24,
+        flex: 1,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        alignSelf: 'center',
     },
-
 
     /*
      * ========================================================
      * BLOCO CENTRAL
      * ========================================================
+     *
+     * A largura máxima impede que o conteúdo fique exagerado
+     * em aparelhos maiores.
+     *
+     * Em aparelhos pequenos, a largura automaticamente diminui.
      */
+
     mainContent: {
-      width: '100%',
-
-      maxWidth: 330,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      alignSelf: 'center',
+        width: '100%',
+        maxWidth: 320,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        flexShrink: 1,
     },
-
 
     /*
      * ========================================================
-     * LOGO
+     * LOGO OFICIAL
      * ========================================================
      *
-     * A imagem original possui aproximadamente:
+     * O tamanho original que estávamos utilizando era:
      *
-     * 1816 × 534
+     * 315px
      *
-     * O aspectRatio mantém a proporção original.
+     * Redução de 20%:
+     *
+     * 315 × 0.80 = 252px
+     *
+     * Portanto:
+     *
+     * maxWidth: 252
+     *
+     * A largura de 100% faz com que ela também se adapte
+     * automaticamente em telas menores.
      */
+
     logoImage: {
-      width: '100%',
-
-      maxWidth: 315,
-
-      aspectRatio: 1816 / 534,
-
-      alignSelf: 'center',
-
-      resizeMode: 'contain',
-
-      margin: 0,
-
-      padding: 0,
-
-      backgroundColor: 'transparent',
+        width: '100%',
+        maxWidth: 252,
+        aspectRatio: 1816 / 534,
+        alignSelf: 'center',
+        resizeMode: 'contain',
+        margin: 0,
+        marginTop: -200,
+        padding: 0,
+        backgroundColor: 'transparent',
+        flexShrink: 1,
     },
-
 
     /*
      * ========================================================
      * ÁREA DOS BOTÕES
      * ========================================================
+     *
+     * Os dois botões fazem parte do mesmo bloco da logo.
+     *
+     * A distância entre a logo e os botões permanece fixa,
+     * mas o bloco inteiro é centralizado na tela.
      */
+
     actionsContainer: {
-      width: '100%',
-
-      maxWidth: 300,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      marginTop: 34,
-
-      alignSelf: 'center',
+        width: '100%',
+        maxWidth: 300,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginTop: -140,
+        padding: 0,
+        flexShrink: 1,
     },
-
 
     /*
      * ========================================================
      * BOTÃO ENTRAR
      * ========================================================
      *
-     * Azul principal da identidade:
+     * Azul principal do Doalize:
      *
      * #3AC2F8
      */
+
     primaryButton: {
-      width: '100%',
-
-      height: 44,
-
-      minHeight: 44,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      paddingHorizontal: 16,
-
-      paddingVertical: 0,
-
-      borderRadius: 10,
-
-      backgroundColor: '#3AC2F8',
-
-      margin: 0,
-
-      overflow: 'hidden',
+        width: '100%',
+        maxWidth: 300,
+        height: 44,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 0,
+        margin: 0,
+        borderRadius: 10,
+        backgroundColor: '#3AC2F8',
+        overflow: 'hidden',
+        flexShrink: 1,
     },
-
 
     /*
      * ========================================================
      * TEXTO DO BOTÃO ENTRAR
      * ========================================================
      */
+
     primaryButtonText: {
-      color: '#141414',
-
-      fontSize: 17,
-
-      lineHeight: 20,
-
-      fontWeight: '600',
-
-      textAlign: 'center',
-
-      includeFontPadding: false,
-
-      margin: 0,
-
-      padding: 0,
+        color: '#141414',
+        fontSize: 17,
+        lineHeight: 20,
+        fontWeight: '600',
+        textAlign: 'center',
+        includeFontPadding: false,
+        margin: 0,
+        padding: 0,
     },
-
 
     /*
      * ========================================================
@@ -403,59 +322,46 @@ const styles =
      * Segundo botão:
      *
      * - transparente;
-     * - borda azul;
-     * - mesmo tamanho do primeiro.
+     * - contorno azul;
+     * - mesma largura;
+     * - mesma altura.
      */
+
     secondaryButton: {
-      width: '100%',
-
-      height: 44,
-
-      minHeight: 44,
-
-      alignItems: 'center',
-
-      justifyContent: 'center',
-
-      paddingHorizontal: 16,
-
-      paddingVertical: 0,
-
-      marginTop: 10,
-
-      borderWidth: 1,
-
-      borderColor: '#3AC2F8',
-
-      borderRadius: 10,
-
-      backgroundColor: 'transparent',
-
-      overflow: 'hidden',
+        width: '100%',
+        maxWidth: 300,
+        height: 44,
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 0,
+        marginTop: 10,
+        marginBottom: 0,
+        borderWidth: 1,
+        borderColor: '#3AC2F8',
+        borderRadius: 10,
+        backgroundColor: 'transparent',
+        overflow: 'hidden',
+        flexShrink: 1,
     },
-
 
     /*
      * ========================================================
      * TEXTO DO BOTÃO CADASTRAR
      * ========================================================
      */
+
     secondaryButtonText: {
-      color: '#3AC2F8',
-
-      fontSize: 17,
-
-      lineHeight: 20,
-
-      fontWeight: '600',
-
-      textAlign: 'center',
-
-      includeFontPadding: false,
-
-      margin: 0,
-
-      padding: 0,
+        color: '#3AC2F8',
+        fontSize: 17,
+        lineHeight: 20,
+        fontWeight: '600',
+        textAlign: 'center',
+        includeFontPadding: false,
+        margin: 0,
+        padding: 0,
     },
 
-  });
+});

@@ -1,6 +1,10 @@
 import React from 'react';
 
 import {
+  View,
+} from 'react-native';
+
+import {
   createMaterialTopTabNavigator,
 } from '@react-navigation/material-top-tabs';
 
@@ -13,57 +17,86 @@ import {
 } from '@react-navigation/native';
 
 import {
-  Ionicons,
+  FontAwesome6,
 } from '@expo/vector-icons';
 
+
 /*
+ * ============================================================
  * TELAS DO FEED
+ * ============================================================
  */
+
 import HomeScreen from '../screens/Home/HomeScreen';
 
 import DetailsScreen from '../screens/Home/DetailsScreen';
 
-/*
- * TELA DE PUBLICAÇÃO
- */
-import PublishScreen from '../screens/Publish/PublishScreen';
 
 /*
- * TELAS DE CONTATOS
+ * ============================================================
+ * TELA DE PUBLICAÇÃO
+ * ============================================================
  */
+
+import PublishScreen from '../screens/Publish/PublishScreen';
+
+
+/*
+ * ============================================================
+ * TELAS DE CONTATOS
+ * ============================================================
+ */
+
 import ContactsScreen from '../screens/Contacts/ContactsScreen';
 
 import ChatScreen from '../screens/Chat/ChatScreen';
 
+
 /*
+ * ============================================================
  * TELAS DO PERFIL
+ * ============================================================
  */
+
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 
 import PublishedScreen from '../screens/Profile/PublishedScreen';
 
+
 /*
+ * ============================================================
  * TELAS DE CONFIGURAÇÕES
+ * ============================================================
  */
+
 import SettingsScreen from '../screens/Settings/SettingsScreen';
 
 import EmailChangeScreen from '../screens/Settings/EmailChangeScreen';
 
 import TwoFactorSettingsScreen from '../screens/Settings/TwoFactorSettingsScreen';
 
+
 /*
+ * ============================================================
  * NAVEGADORES
+ * ============================================================
  */
+
 const Tab =
   createMaterialTopTabNavigator();
 
 const Stack =
   createNativeStackNavigator();
 
+
 /*
+ * ============================================================
  * CONFIGURAÇÃO DAS PILHAS
+ * ============================================================
  */
+
 const stackScreenOptions = {
+
   headerShown:
     false,
 
@@ -72,12 +105,18 @@ const stackScreenOptions = {
 
   gestureEnabled:
     true,
+
 };
 
+
 /*
+ * ============================================================
  * PILHA DO FEED
+ * ============================================================
  */
+
 function HomeStack() {
+
   return (
     <Stack.Navigator
       initialRouteName="HomeScreen"
@@ -85,6 +124,7 @@ function HomeStack() {
         stackScreenOptions
       }
     >
+
       <Stack.Screen
         name="HomeScreen"
         component={
@@ -98,14 +138,20 @@ function HomeStack() {
           DetailsScreen
         }
       />
+
     </Stack.Navigator>
   );
 }
 
+
 /*
+ * ============================================================
  * PILHA DOS CONTATOS
+ * ============================================================
  */
+
 function ContactsStack() {
+
   return (
     <Stack.Navigator
       initialRouteName="ContactsScreen"
@@ -113,6 +159,7 @@ function ContactsStack() {
         stackScreenOptions
       }
     >
+
       <Stack.Screen
         name="ContactsScreen"
         component={
@@ -126,18 +173,20 @@ function ContactsStack() {
           ChatScreen
         }
       />
+
     </Stack.Navigator>
   );
 }
 
+
 /*
+ * ============================================================
  * PILHA DO PERFIL
- *
- * As telas de alteração de e-mail
- * e verificação em duas etapas
- * precisam ficar nesta pilha.
+ * ============================================================
  */
+
 function ProfileStack() {
+
   return (
     <Stack.Navigator
       initialRouteName="ProfileScreen"
@@ -145,6 +194,7 @@ function ProfileStack() {
         stackScreenOptions
       }
     >
+
       <Stack.Screen
         name="ProfileScreen"
         component={
@@ -179,29 +229,33 @@ function ProfileStack() {
           TwoFactorSettingsScreen
         }
       />
+
     </Stack.Navigator>
   );
 }
 
+
 /*
- * VERIFICAR SE A PILHA ESTÁ
- * NA TELA PRINCIPAL
- *
- * O gesto horizontal das abas será
- * bloqueado nas telas internas.
+ * ============================================================
+ * VERIFICAR SE A PILHA ESTÁ NA TELA PRINCIPAL
+ * ============================================================
  */
+
 function isStackOnMainScreen(
   route,
   mainScreenName
 ) {
+
   const focusedRouteName =
     getFocusedRouteNameFromRoute(
       route
     );
 
+
   if (!focusedRouteName) {
     return true;
   }
+
 
   return (
     focusedRouteName ===
@@ -209,124 +263,350 @@ function isStackOnMainScreen(
   );
 }
 
+
 /*
+ * ============================================================
  * ROTAS DO APLICATIVO
+ * ============================================================
  */
+
 export default function AppRoutes() {
+
   return (
     <Tab.Navigator
+
       initialRouteName="Home"
+
       tabBarPosition="bottom"
+
+
+      /*
+       * ========================================================
+       * CONFIGURAÇÕES DA BARRA
+       * ========================================================
+       */
+
       screenOptions={{
+
+        /*
+         * Navegação por gesto.
+         */
         swipeEnabled:
           true,
 
+
+        /*
+         * Carregamento preguiçoso.
+         */
         lazy:
           true,
 
+
+        /*
+         * Mostrar ícones.
+         */
         tabBarShowIcon:
           true,
 
+
+        /*
+         * Não usar scroll horizontal.
+         */
         tabBarScrollEnabled:
           false,
 
+
+        /*
+         * Não mostrar os textos.
+         */
+        tabBarShowLabel:
+          false,
+
+
+        /*
+         * ====================================================
+         * CORES
+         * ====================================================
+         *
+         * Selecionado:
+         * #3AC2F8
+         *
+         * Não selecionado:
+         * #F5F5F5
+         */
+
         tabBarActiveTintColor:
-          '#2563eb',
+          '#3AC2F8',
 
         tabBarInactiveTintColor:
-          '#777777',
+          '#F5F5F5',
+
+
+        /*
+         * ====================================================
+         * BARRA INFERIOR
+         * ====================================================
+         */
 
         tabBarStyle: {
-          height:
-            65,
 
+          /*
+           * Mantém a altura visual da barra.
+           */
+          height:
+            64,
+
+          minHeight:
+            64,
+
+          maxHeight:
+            64,
+
+
+          /*
+           * Espaçamento vertical.
+           */
           paddingTop:
-            5,
+            3,
 
           paddingBottom:
-            5,
+            3,
 
-          backgroundColor:
-            '#ffffff',
 
-          borderTopWidth:
+          /*
+           * Sem espaço lateral.
+           */
+          paddingHorizontal:
             0,
 
-          elevation:
-            10,
+          margin:
+            0,
 
+
+          /*
+           * Fundo escuro.
+           */
+          backgroundColor:
+            '#141414',
+
+
+          /*
+           * Linha superior de separação.
+           */
+          borderTopWidth:
+            1,
+
+          borderTopColor:
+            '#F5F5F5',
+
+
+          /*
+           * Sem linha inferior.
+           */
+          borderBottomWidth:
+            0,
+
+
+          /*
+           * Sem elevação.
+           */
+          elevation:
+            0,
+
+
+          /*
+           * Sem sombra.
+           */
           shadowColor:
-            '#000000',
+            'transparent',
 
           shadowOffset: {
             width:
               0,
 
             height:
-              -2,
+              0,
           },
 
           shadowOpacity:
-            0.08,
+            0,
 
           shadowRadius:
-            5,
+            0,
+
+
+          /*
+           * Evita recorte dos ícones.
+           */
+          overflow:
+            'visible',
+
         },
 
+
+        /*
+         * ====================================================
+         * INDICADOR DO MATERIAL TOP TAB
+         * ====================================================
+         *
+         * Desativado.
+         */
         tabBarIndicatorStyle: {
+
           height:
             0,
 
           backgroundColor:
             'transparent',
+
+          opacity:
+            0,
+
         },
+
+
+        /*
+         * ====================================================
+         * ITENS DA BARRA
+         * ====================================================
+         */
 
         tabBarItemStyle: {
+
+          /*
+           * Cada item ocupa exatamente a mesma proporção.
+           */
+          flex:
+            1,
+
+          flexGrow:
+            1,
+
+          flexShrink:
+            1,
+
+          flexBasis:
+            0,
+
+
+          /*
+           * Impede cálculos mínimos de largura.
+           */
+          minWidth:
+            0,
+
+
+          /*
+           * Mais espaço vertical interno para os ícones.
+           */
+          height:
+            58,
+
           minHeight:
-            55,
+            58,
 
+
+          /*
+           * Sem espaço horizontal.
+           */
           paddingHorizontal:
-            4,
+            0,
 
-          paddingVertical:
-            3,
-        },
+          paddingTop:
+            1,
 
-        tabBarLabelStyle: {
+          paddingBottom:
+            1,
+
+
+          /*
+           * Sem margem.
+           */
           margin:
             0,
 
-          marginTop:
-            2,
+
+          /*
+           * Centralização.
+           */
+          justifyContent:
+            'center',
+
+          alignItems:
+            'center',
+
+
+          /*
+           * Permite que o ícone ultrapasse minimamente
+           * sua área interna sem ser recortado.
+           */
+          overflow:
+            'visible',
+
+        },
+
+
+        /*
+         * ====================================================
+         * LABEL
+         * ====================================================
+         *
+         * Mantido por compatibilidade, mas oculto.
+         */
+        tabBarLabelStyle: {
+
+          margin:
+            0,
+
+          padding:
+            0,
 
           fontSize:
-            11,
+            0,
 
           fontWeight:
-            '600',
+            '400',
 
           textTransform:
             'none',
+
         },
 
+
+        /*
+         * ====================================================
+         * EFEITO DE TOQUE
+         * ====================================================
+         */
+
         tabBarPressColor:
-          'rgba(37, 99, 235, 0.10)',
+          'rgba(245, 245, 245, 0.06)',
 
         tabBarPressOpacity:
-          0.8,
+          0.75,
+
       }}
+
     >
-      {/* FEED */}
+
+
+      {/* ======================================================
+          INÍCIO
+          ====================================================== */}
+
       <Tab.Screen
+
         name="Home"
+
         component={
           HomeStack
         }
-        options={({
-          route,
-        }) => ({
+
+        options={({ route }) => ({
+
           title:
             'Início',
+
 
           swipeEnabled:
             isStackOnMainScreen(
@@ -334,27 +614,74 @@ export default function AppRoutes() {
               'HomeScreen'
             ),
 
+
+          /*
+           * ==================================================
+           * HOME
+           * ==================================================
+           *
+           * Ativo:
+           * fa-solid fa-house
+           *
+           * Inativo:
+           * fa-regular fa-house
+           */
+
           tabBarIcon: ({
             color,
             focused,
           }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'home'
-                  : 'home-outline'
-              }
-              color={
-                color
-              }
-              size={23}
-            />
+
+            <View
+              style={{
+                width:
+                  32,
+
+                height:
+                  32,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                overflow:
+                  'visible',
+              }}
+            >
+
+              <FontAwesome6
+
+                name="house"
+
+                size={
+                  focused
+                    ? 25
+                    : 24
+                }
+
+                color={
+                  color
+                }
+
+                solid={
+                  focused
+                }
+
+              />
+
+            </View>
+
           ),
+
         })}
-        listeners={({
-          navigation,
-        }) => ({
+
+
+        listeners={({ navigation }) => ({
+
           tabPress: () => {
+
             navigation.navigate(
               'Home',
               {
@@ -362,53 +689,106 @@ export default function AppRoutes() {
                   'HomeScreen',
               }
             );
+
           },
+
         })}
+
       />
 
-      {/* PUBLICAR */}
+
+      {/* ======================================================
+          PUBLICAR
+          ====================================================== */}
+
       <Tab.Screen
+
         name="Publicar"
+
         component={
           PublishScreen
         }
+
         options={{
+
           title:
             'Publicar',
 
           swipeEnabled:
             true,
 
+
+          /*
+           * Pena sólida.
+           */
+
           tabBarIcon: ({
             color,
-            focused,
           }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'add-circle'
-                  : 'add-circle-outline'
-              }
-              color={
-                color
-              }
-              size={25}
-            />
+
+            <View
+              style={{
+                width:
+                  32,
+
+                height:
+                  32,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                overflow:
+                  'visible',
+              }}
+            >
+
+              <FontAwesome6
+
+                name="feather"
+
+                size={
+                  24
+                }
+
+                color={
+                  color
+                }
+
+                solid={
+                  true
+                }
+
+              />
+
+            </View>
+
           ),
+
         }}
+
       />
 
-      {/* CONTATOS */}
+
+      {/* ======================================================
+          CONTATOS
+          ====================================================== */}
+
       <Tab.Screen
+
         name="Contatos"
+
         component={
           ContactsStack
         }
-        options={({
-          route,
-        }) => ({
+
+        options={({ route }) => ({
+
           title:
             'Contatos',
+
 
           swipeEnabled:
             isStackOnMainScreen(
@@ -416,27 +796,74 @@ export default function AppRoutes() {
               'ContactsScreen'
             ),
 
+
+          /*
+           * ==================================================
+           * MENSAGEM
+           * ==================================================
+           *
+           * Ativo:
+           * fa-solid fa-comment
+           *
+           * Inativo:
+           * fa-regular fa-comment
+           */
+
           tabBarIcon: ({
             color,
             focused,
           }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'chatbubble'
-                  : 'chatbubble-outline'
-              }
-              color={
-                color
-              }
-              size={22}
-            />
+
+            <View
+              style={{
+                width:
+                  32,
+
+                height:
+                  32,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                overflow:
+                  'visible',
+              }}
+            >
+
+              <FontAwesome6
+
+                name="comment"
+
+                size={
+                  focused
+                    ? 25
+                    : 24
+                }
+
+                color={
+                  color
+                }
+
+                solid={
+                  focused
+                }
+
+              />
+
+            </View>
+
           ),
+
         })}
-        listeners={({
-          navigation,
-        }) => ({
+
+
+        listeners={({ navigation }) => ({
+
           tabPress: () => {
+
             navigation.navigate(
               'Contatos',
               {
@@ -444,54 +871,106 @@ export default function AppRoutes() {
                   'ContactsScreen',
               }
             );
+
           },
+
         })}
+
       />
 
-      {/* CONTA */}
+
+      {/* ======================================================
+          CONTA
+          ====================================================== */}
+
       <Tab.Screen
+
         name="Conta"
+
         component={
           ProfileStack
         }
-        options={({
-          route,
-        }) => ({
+
+        options={({ route }) => ({
+
           title:
             'Conta',
 
-          /*
-           * Impede a troca de aba por gesto
-           * nas Configurações, troca de
-           * e-mail e verificação em duas etapas.
-           */
+
           swipeEnabled:
             isStackOnMainScreen(
               route,
               'ProfileScreen'
             ),
 
+
+          /*
+           * ==================================================
+           * PERFIL
+           * ==================================================
+           *
+           * Ativo:
+           * fa-solid fa-circle-user
+           *
+           * Inativo:
+           * fa-regular fa-circle-user
+           */
+
           tabBarIcon: ({
             color,
             focused,
           }) => (
-            <Ionicons
-              name={
-                focused
-                  ? 'person'
-                  : 'person-outline'
-              }
-              color={
-                color
-              }
-              size={23}
-            />
+
+            <View
+              style={{
+                width:
+                  32,
+
+                height:
+                  32,
+
+                alignItems:
+                  'center',
+
+                justifyContent:
+                  'center',
+
+                overflow:
+                  'visible',
+              }}
+            >
+
+              <FontAwesome6
+
+                name="circle-user"
+
+                size={
+                  focused
+                    ? 26
+                    : 25
+                }
+
+                color={
+                  color
+                }
+
+                solid={
+                  focused
+                }
+
+              />
+
+            </View>
+
           ),
+
         })}
-        listeners={({
-          navigation,
-        }) => ({
+
+
+        listeners={({ navigation }) => ({
+
           tabPress: () => {
+
             navigation.navigate(
               'Conta',
               {
@@ -499,9 +978,13 @@ export default function AppRoutes() {
                   'ProfileScreen',
               }
             );
+
           },
+
         })}
+
       />
+
     </Tab.Navigator>
   );
 }

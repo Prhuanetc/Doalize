@@ -31,116 +31,198 @@ import {
   useAuth,
 } from '../../hooks/useAuth';
 
-import {
-  useTheme,
-} from '../../hooks/useTheme';
-
 import logo from '../../../assets/logo.png';
 
+
 /*
- * PALETA OFICIAL
- * DO DOALIZE
+ * ============================================================
+ * CORES OFICIAIS DO DOALIZE
+ * ============================================================
+ *
+ * DARK MODE ATUAL
+ *
+ * Fundo:
+ * #141414
+ *
+ * Azul principal:
+ * #3AC2F8
+ *
+ * Azul dos campos:
+ * #05618D
+ *
+ * Azul secundário:
+ * #2594BD
+ *
+ * Azul de apoio:
+ * #128090
+ *
+ * Azul profundo:
+ * #155269
  */
+
 const COLORS = {
-  lightBlue:
-    '#44AFDD',
 
-  primary:
-    '#3594BD',
+  /*
+   * ==========================================================
+   * FUNDO
+   * ==========================================================
+   */
 
-  darkBlue:
-    '#166892',
-
-  navyBlue:
-    '#1D5D76',
+  background:
+    '#141414',
 
   lightBackground:
-    '#E1E1E1',
+    '#F5F5F5',
 
-  darkBackground:
-    '#0B0B0F',
 
-  accent:
-    '#22869C',
+  /*
+   * ==========================================================
+   * AZUIS
+   * ==========================================================
+   */
+
+  primary:
+    '#3AC2F8',
+
+  secondary:
+    '#2594BD',
+
+  input:
+    '#05618D',
+
+  support:
+    '#128090',
+
+  deepBlue:
+    '#155269',
+
+
+  /*
+   * ==========================================================
+   * TEXTOS
+   * ==========================================================
+   */
+
+  lightText:
+    '#F5F5F5',
+
+  darkText:
+    '#141414',
 
   white:
     '#FFFFFF',
+
+
+  /*
+   * ==========================================================
+   * BORDA
+   * ==========================================================
+   */
+
+  border:
+    'rgba(245, 245, 245, 0.30)',
+
 };
 
+
+/*
+ * ============================================================
+ * LOGIN SCREEN
+ * ============================================================
+ */
+
 export default function LoginScreen() {
+
   const navigation =
     useNavigation();
+
+
+  /*
+   * ==========================================================
+   * AUTENTICAÇÃO
+   * ==========================================================
+   *
+   * A lógica continua exatamente ligada ao seu AuthContext.
+   */
 
   const {
     signIn,
   } = useAuth();
 
-  const {
-    theme,
-    darkMode,
-  } = useTheme();
+
+  /*
+   * ==========================================================
+   * ESTADOS
+   * ==========================================================
+   */
 
   const [
     email,
     setEmail,
   ] = useState('');
 
+
   const [
     password,
     setPassword,
   ] = useState('');
+
 
   const [
     loading,
     setLoading,
   ] = useState(false);
 
-  /*
-   * CORES ADAPTADAS
-   * AO TEMA
-   */
-  const screenBackground =
-    darkMode
-      ? COLORS.darkBackground
-      : COLORS.lightBackground;
 
-  const cardBackground =
-    darkMode
-      ? COLORS.darkBackground
-      : COLORS.white;
+  /*
+   * ==========================================================
+   * CORES DA TELA
+   * ==========================================================
+   *
+   * Neste momento o Login inicia diretamente em Dark Mode,
+   * como a tela inicial do aplicativo.
+   */
+
+  const screenBackground =
+    COLORS.background;
 
   const mainTextColor =
-    darkMode
-      ? COLORS.white
-      : COLORS.darkBackground;
+    COLORS.lightText;
 
   const secondaryTextColor =
-    darkMode
-      ? COLORS.lightBackground
-      : COLORS.navyBlue;
+    'rgba(245, 245, 245, 0.72)';
 
-  const borderColor =
-    darkMode
-      ? COLORS.navyBlue
-      : COLORS.lightBlue;
 
   /*
+   * ==========================================================
    * REALIZAR LOGIN
+   * ==========================================================
    */
+
   async function handleLogin() {
+
     if (loading) {
       return;
     }
 
+
+    /*
+     * Normaliza o e-mail antes de enviar.
+     */
     const normalizedEmail =
       email
         .trim()
         .toLowerCase();
 
+
+    /*
+     * Validação básica.
+     */
     if (
       !normalizedEmail ||
       !password
     ) {
+
       Alert.alert(
         'Atenção',
         'Preencha o e-mail e a senha.'
@@ -149,23 +231,40 @@ export default function LoginScreen() {
       return;
     }
 
+
     try {
+
       setLoading(
         true
       );
 
+
+      /*
+       * Chamada original do backend/AuthContext.
+       *
+       * Não foi alterada.
+       */
       const response =
         await signIn(
           normalizedEmail,
           password
         );
 
+
       console.log(
         'RESPOSTA DO LOGIN:',
         response
       );
 
+
+      /*
+       * ========================================================
+       * LOGIN FALHOU
+       * ========================================================
+       */
+
       if (!response?.success) {
+
         Alert.alert(
           'Não foi possível entrar',
           response?.message ||
@@ -175,19 +274,20 @@ export default function LoginScreen() {
         return;
       }
 
+
       /*
+       * ========================================================
        * VERIFICAÇÃO EM DUAS ETAPAS
+       * ========================================================
        *
-       * Quando estiver ativada, o
-       * AuthContext guarda o desafio
-       * temporário, mas não cria uma
-       * sessão definitiva ainda.
+       * Mantém exatamente o fluxo existente.
        */
+
       if (
-        response
-          ?.requiresTwoFactor ===
+        response?.requiresTwoFactor ===
         true
       ) {
+
         navigation.navigate(
           'LoginVerificationScreen',
           {
@@ -205,17 +305,21 @@ export default function LoginScreen() {
         return;
       }
 
+
       /*
-       * LOGIN COMUM
+       * ========================================================
+       * LOGIN NORMAL
+       * ========================================================
        *
-       * O AuthContext salva o usuário
-       * e o navegador raiz abre as
-       * rotas autenticadas.
+       * O AuthContext continua responsável pela sessão.
        */
+
       console.log(
         'LOGIN REALIZADO COM SUCESSO'
       );
+
     } catch (error) {
+
       console.log(
         'ERRO AO FAZER LOGIN:',
         {
@@ -232,6 +336,7 @@ export default function LoginScreen() {
         }
       );
 
+
       Alert.alert(
         'Erro',
         error.response
@@ -239,21 +344,30 @@ export default function LoginScreen() {
           ?.message ||
           'Não foi possível fazer login.'
       );
+
     } finally {
+
       setLoading(
         false
       );
+
     }
+
   }
 
+
   /*
-   * ABRIR RECUPERAÇÃO
-   * DE SENHA
+   * ==========================================================
+   * ABRIR RECUPERAÇÃO DE SENHA
+   * ==========================================================
    */
+
   function handleForgotPassword() {
+
     if (loading) {
       return;
     }
+
 
     navigation.navigate(
       'ForgotPasswordScreen',
@@ -264,42 +378,65 @@ export default function LoginScreen() {
             .toLowerCase(),
       }
     );
+
   }
 
+
   /*
+   * ==========================================================
    * ABRIR CADASTRO
+   * ==========================================================
    */
+
   function handleOpenRegister() {
+
     if (loading) {
       return;
     }
+
 
     navigation.navigate(
       'RegisterScreen'
     );
+
   }
 
+
   /*
-   * VOLTAR PARA A
-   * TELA INICIAL
+   * ==========================================================
+   * VOLTAR PARA A TELA INICIAL
+   * ==========================================================
    */
+
   function handleBack() {
+
     if (loading) {
       return;
     }
 
+
     if (
       navigation.canGoBack()
     ) {
+
       navigation.goBack();
 
       return;
     }
 
+
     navigation.navigate(
       'WelcomeScreen'
     );
+
   }
+
+
+  /*
+   * ============================================================
+   * RENDERIZAÇÃO
+   * ============================================================
+   */
 
   return (
     <SafeAreaView
@@ -311,28 +448,34 @@ export default function LoginScreen() {
         },
       ]}
     >
+
+      {/* ======================================================
+          STATUS BAR
+          ====================================================== */}
+
       <StatusBar
-        barStyle={
-          darkMode
-            ? 'light-content'
-            : 'dark-content'
-        }
+        barStyle="light-content"
         backgroundColor={
           screenBackground
         }
       />
+
 
       <KeyboardAvoidingView
         style={
           styles.container
         }
         behavior={
-          Platform.OS ===
-          'ios'
+          Platform.OS === 'ios'
             ? 'padding'
             : undefined
         }
       >
+
+        {/* ====================================================
+            BOTÃO VOLTAR
+            ==================================================== */}
+
         <TouchableOpacity
           activeOpacity={0.72}
           onPress={
@@ -346,28 +489,28 @@ export default function LoginScreen() {
           style={[
             styles.backButton,
             {
-              backgroundColor:
-                cardBackground,
-
-              borderColor,
-
               opacity:
                 loading
-                  ? 0.6
+                  ? 0.4
                   : 1,
             },
           ]}
         >
+
           <Ionicons
             name="arrow-back"
-            size={23}
+            size={22}
             color={
-              darkMode
-                ? COLORS.lightBlue
-                : COLORS.darkBlue
+              COLORS.lightText
             }
           />
+
         </TouchableOpacity>
+
+
+        {/* ====================================================
+            ÁREA ROLÁVEL
+            ==================================================== */}
 
         <ScrollView
           contentContainerStyle={
@@ -379,46 +522,37 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/*
-           * IDENTIDADE VISUAL
-           *
-           * logo.png possui fundo
-           * transparente e texto branco.
-           */}
+
+          {/* ==================================================
+              CONTEÚDO CENTRAL
+              ================================================== */}
+
           <View
             style={
-              styles.identityContainer
+              styles.mainContent
             }
           >
-            <View
-              style={
-                styles.logoArea
+
+            {/* =================================================
+                LOGO
+                ================================================= */}
+
+            <Image
+              source={
+                logo
               }
-            >
-              <View
-                style={
-                  styles.logoDecorationOne
-                }
-              />
+              style={
+                styles.logoImage
+              }
+              resizeMode="contain"
+              accessible={true}
+              accessibilityLabel="Doalize"
+            />
 
-              <View
-                style={
-                  styles.logoDecorationTwo
-                }
-              />
 
-              <Image
-                source={
-                  logo
-                }
-                style={
-                  styles.logoImage
-                }
-                resizeMode="contain"
-                accessible
-                accessibilityLabel="Doalize"
-              />
-            </View>
+            {/* =================================================
+                TÍTULO
+                ================================================= */}
 
             <Text
               style={[
@@ -429,61 +563,29 @@ export default function LoginScreen() {
                 },
               ]}
             >
-              Entre na sua conta
+              Entrar
             </Text>
 
-            <Text
-              style={[
-                styles.subtitle,
-                {
-                  color:
-                    secondaryTextColor,
-                },
-              ]}
-            >
-              Continue ajudando e acompanhando causas solidárias.
-            </Text>
-          </View>
 
-          {/*
-           * FORMULÁRIO
-           */}
-          <View
-            style={[
-              styles.formCard,
-              {
-                backgroundColor:
-                  cardBackground,
+            {/* =================================================
+                FORMULÁRIO
+                ================================================= */}
 
-                borderColor:
-                  darkMode
-                    ? COLORS.navyBlue
-                    : COLORS.white,
-
-                shadowColor:
-                  darkMode
-                    ? COLORS.darkBackground
-                    : COLORS.navyBlue,
-              },
-            ]}
-          >
             <View
               style={
-                styles.fieldContainer
+                styles.form
               }
             >
+
+              {/* =============================================
+                  E-MAIL
+                  ============================================= */}
+
               <View
                 style={
-                  styles.labelContainer
+                  styles.fieldContainer
                 }
               >
-                <Ionicons
-                  name="mail-outline"
-                  size={17}
-                  color={
-                    COLORS.primary
-                  }
-                />
 
                 <Text
                   style={[
@@ -496,44 +598,38 @@ export default function LoginScreen() {
                 >
                   E-mail
                 </Text>
+
+
+                <Input
+                  placeholder="Digite seu e-mail"
+                  value={
+                    email
+                  }
+                  onChangeText={
+                    setEmail
+                  }
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={
+                    !loading
+                  }
+                  returnKeyType="next"
+                  maxLength={160}
+                />
+
               </View>
 
-              <Input
-                placeholder="Digite seu e-mail"
-                value={
-                  email
-                }
-                onChangeText={
-                  setEmail
-                }
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={
-                  !loading
-                }
-                returnKeyType="next"
-                maxLength={160}
-              />
-            </View>
 
-            <View
-              style={
-                styles.fieldContainer
-              }
-            >
+              {/* =============================================
+                  SENHA
+                  ============================================= */}
+
               <View
                 style={
-                  styles.labelContainer
+                  styles.fieldContainer
                 }
               >
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={17}
-                  color={
-                    COLORS.primary
-                  }
-                />
 
                 <Text
                   style={[
@@ -546,98 +642,109 @@ export default function LoginScreen() {
                 >
                   Senha
                 </Text>
+
+
+                <Input
+                  placeholder="Digite sua senha"
+                  value={
+                    password
+                  }
+                  onChangeText={
+                    setPassword
+                  }
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={
+                    !loading
+                  }
+                  returnKeyType="done"
+                  onSubmitEditing={
+                    handleLogin
+                  }
+                />
+
               </View>
 
-              <Input
-                placeholder="Digite sua senha"
-                value={
-                  password
+
+              {/* =============================================
+                  ESQUECI MINHA SENHA
+                  ============================================= */}
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={
+                  handleForgotPassword
                 }
-                onChangeText={
-                  setPassword
+                disabled={
+                  loading
                 }
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={
-                  !loading
+                accessibilityRole="button"
+                accessibilityLabel="Recuperar minha senha"
+                style={
+                  styles.forgotPasswordButton
                 }
-                returnKeyType="done"
-                onSubmitEditing={
+              >
+
+                <Text
+                  style={[
+                    styles.forgotPasswordText,
+                    {
+                      color:
+                        COLORS.primary,
+
+                      opacity:
+                        loading
+                          ? 0.5
+                          : 1,
+                    },
+                  ]}
+                >
+                  Esqueci minha senha
+                </Text>
+
+              </TouchableOpacity>
+
+
+              {/* =============================================
+                  BOTÃO ENTRAR
+                  ============================================= */}
+
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={
                   handleLogin
                 }
-              />
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={
-                handleForgotPassword
-              }
-              disabled={
-                loading
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Recuperar minha senha"
-              style={
-                styles.forgotPasswordButton
-              }
-            >
-              <Text
+                disabled={
+                  loading
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Entrar na conta"
                 style={[
-                  styles.forgotPasswordText,
+                  styles.loginButton,
                   {
-                    color:
-                      darkMode
-                        ? COLORS.lightBlue
-                        : COLORS.darkBlue,
+                    backgroundColor:
+                      COLORS.primary,
 
                     opacity:
                       loading
-                        ? 0.6
+                        ? 0.7
                         : 1,
                   },
                 ]}
               >
-                Esqueci minha senha
-              </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={
-                handleLogin
-              }
-              disabled={
-                loading
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Entrar na conta"
-              style={[
-                styles.loginButton,
-                {
-                  backgroundColor:
-                    COLORS.primary,
+                {loading ? (
 
-                  shadowColor:
-                    COLORS.darkBlue,
+                  <ActivityIndicator
+                    size="small"
+                    color={
+                      COLORS.white
+                    }
+                  />
 
-                  opacity:
-                    loading
-                      ? 0.7
-                      : 1,
-                },
-              ]}
-            >
-              {loading ? (
-                <ActivityIndicator
-                  size="small"
-                  color={
-                    COLORS.white
-                  }
-                />
-              ) : (
-                <>
+                ) : (
+
                   <Text
                     style={
                       styles.loginButtonText
@@ -646,668 +753,549 @@ export default function LoginScreen() {
                     Entrar
                   </Text>
 
-                  <Ionicons
-                    name="arrow-forward"
-                    size={20}
-                    color={
-                      COLORS.white
-                    }
-                    style={
-                      styles.loginButtonIcon
-                    }
-                  />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+                )}
 
-          {/*
-           * CADASTRO
-           */}
-          <View
-            style={
-              styles.footer
-            }
-          >
-            <Text
-              style={[
-                styles.footerText,
-                {
-                  color:
-                    secondaryTextColor,
-                },
-              ]}
-            >
-              Ainda não possui uma conta?
-            </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={
-                handleOpenRegister
-              }
-              disabled={
-                loading
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Criar uma nova conta"
+            </View>
+
+
+            {/* =================================================
+                CADASTRO
+                ================================================= */}
+
+            <View
               style={
-                styles.registerButton
+                styles.footer
               }
             >
+
               <Text
                 style={[
-                  styles.registerText,
+                  styles.footerText,
                   {
                     color:
-                      darkMode
-                        ? COLORS.lightBlue
-                        : COLORS.darkBlue,
-
-                    opacity:
-                      loading
-                        ? 0.6
-                        : 1,
+                      secondaryTextColor,
                   },
                 ]}
               >
-                Criar conta
+                Não tem uma conta?
               </Text>
-            </TouchableOpacity>
+
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={
+                  handleOpenRegister
+                }
+                disabled={
+                  loading
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Criar uma nova conta"
+                style={
+                  styles.registerButton
+                }
+              >
+
+                <Text
+                  style={[
+                    styles.registerText,
+                    {
+                      color:
+                        COLORS.primary,
+
+                      opacity:
+                        loading
+                          ? 0.5
+                          : 1,
+                    },
+                  ]}
+                >
+                  Cadastrar-se
+                </Text>
+
+              </TouchableOpacity>
+
+            </View>
+
           </View>
 
-          {/*
-           * AVISO DE SEGURANÇA
-           */}
-          <View
-            style={[
-              styles.securityNotice,
-              {
-                backgroundColor:
-                  darkMode
-                    ? COLORS.navyBlue
-                    : COLORS.white,
-
-                borderColor:
-                  darkMode
-                    ? COLORS.accent
-                    : COLORS.lightBlue,
-              },
-            ]}
-          >
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={19}
-              color={
-                darkMode
-                  ? COLORS.lightBlue
-                  : COLORS.darkBlue
-              }
-            />
-
-            <Text
-              style={[
-                styles.securityNoticeText,
-                {
-                  color:
-                    secondaryTextColor,
-                },
-              ]}
-            >
-              Sua conta pode utilizar verificação em duas etapas para aumentar a segurança do login.
-            </Text>
-          </View>
         </ScrollView>
+
       </KeyboardAvoidingView>
+
     </SafeAreaView>
   );
 }
 
+
+/*
+ * ============================================================
+ * ESTILOS
+ * ============================================================
+ */
+
 const styles =
   StyleSheet.create({
+
+    /*
+     * ========================================================
+     * SAFE AREA
+     * ========================================================
+     */
+
     safeArea: {
-      flex:
-        1,
+      flex: 1,
+
+      width: '100%',
+
+      backgroundColor:
+        COLORS.background,
     },
+
+
+    /*
+     * ========================================================
+     * CONTAINER
+     * ========================================================
+     */
 
     container: {
-      flex:
-        1,
+      flex: 1,
+
+      width: '100%',
+
+      backgroundColor:
+        COLORS.background,
     },
 
+
     /*
+     * ========================================================
      * BOTÃO VOLTAR
+     * ========================================================
      */
+
     backButton: {
-      position:
-        'absolute',
+      position: 'absolute',
 
       top:
-        Platform.OS ===
-        'android'
-          ? 18
-          : 12,
+        Platform.OS === 'android'
+          ? 8
+          : 6,
 
-      left:
-        20,
+      left: 12,
 
-      zIndex:
-        10,
+      zIndex: 10,
 
-      width:
-        44,
+      width: 40,
 
-      height:
-        44,
+      height: 40,
 
-      alignItems:
-        'center',
+      alignItems: 'center',
 
-      justifyContent:
-        'center',
+      justifyContent: 'center',
 
-      borderWidth:
-        1,
+      borderRadius: 20,
 
-      borderRadius:
-        22,
+      backgroundColor:
+        'transparent',
 
-      shadowColor:
-        COLORS.darkBackground,
+      padding: 0,
 
-      shadowOffset: {
-        width:
-          0,
-
-        height:
-          3,
-      },
-
-      shadowOpacity:
-        0.13,
-
-      shadowRadius:
-        6,
-
-      elevation:
-        4,
+      margin: 0,
     },
 
+
     /*
-     * CONTEÚDO
+     * ========================================================
+     * ÁREA ROLÁVEL
+     * ========================================================
+     *
+     * O conteúdo inteiro pode se adaptar à altura disponível.
      */
+
     scrollContent: {
-      flexGrow:
-        1,
+      flexGrow: 1,
 
-      justifyContent:
-        'center',
+      width: '100%',
 
-      paddingHorizontal:
-        24,
+      alignItems: 'center',
 
-      paddingTop:
-        Platform.OS ===
-        'android'
-          ? 82
-          : 72,
+      justifyContent: 'center',
 
-      paddingBottom:
-        Platform.OS ===
-        'android'
-          ? 34
-          : 28,
+      paddingHorizontal: 24,
+
+      paddingTop: 44,
+
+      paddingBottom: 28,
     },
+
 
     /*
-     * IDENTIDADE
+     * ========================================================
+     * BLOCO PRINCIPAL
+     * ========================================================
      */
-    identityContainer: {
-      width:
-        '100%',
 
-      alignItems:
-        'center',
+    mainContent: {
+      width: '100%',
+
+      maxWidth: 338,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+      alignSelf: 'center',
+
+      flexShrink: 1,
     },
 
-    logoArea: {
-      position:
-        'relative',
 
-      width:
-        '100%',
-
-      maxWidth:
-        330,
-
-      height:
-        138,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      overflow:
-        'hidden',
-
-      paddingHorizontal:
-        26,
-
-      borderRadius:
-        27,
-
-      backgroundColor:
-        COLORS.navyBlue,
-
-      shadowColor:
-        COLORS.darkBlue,
-
-      shadowOffset: {
-        width:
-          0,
-
-        height:
-          9,
-      },
-
-      shadowOpacity:
-        0.24,
-
-      shadowRadius:
-        14,
-
-      elevation:
-        7,
-    },
-
-    logoDecorationOne: {
-      position:
-        'absolute',
-
-      top:
-        -65,
-
-      right:
-        -40,
-
-      width:
-        165,
-
-      height:
-        165,
-
-      borderRadius:
-        83,
-
-      backgroundColor:
-        COLORS.darkBlue,
-
-      opacity:
-        0.72,
-    },
-
-    logoDecorationTwo: {
-      position:
-        'absolute',
-
-      bottom:
-        -60,
-
-      left:
-        -35,
-
-      width:
-        140,
-
-      height:
-        140,
-
-      borderRadius:
-        70,
-
-      backgroundColor:
-        COLORS.accent,
-
-      opacity:
-        0.47,
-    },
+    /*
+     * ========================================================
+     * LOGO
+     * ========================================================
+     *
+     * Usa:
+     *
+     * assets/logo.png
+     */
 
     logoImage: {
-      width:
-        '100%',
+      width: 166,
 
-      height:
-        92,
+      height: 50,
+
+      maxWidth: '60%',
+
+      alignSelf: 'center',
+
+      resizeMode: 'contain',
+
+      margin: 0,
+
+      padding: 0,
+
+      backgroundColor:
+        'transparent',
+
+      flexShrink: 0,
     },
+
+
+    /*
+     * ========================================================
+     * TÍTULO
+     * ========================================================
+     */
 
     title: {
-      marginTop:
-        27,
+      marginTop: 27,
 
-      fontSize:
-        25,
+      fontSize: 23,
 
-      lineHeight:
-        32,
+      lineHeight: 29,
 
-      fontWeight:
-        '900',
+      fontWeight: '500',
 
-      textAlign:
-        'center',
+      textAlign: 'center',
+
+      includeFontPadding: false,
+
+      letterSpacing: 0,
+
+      marginBottom: 0,
+
+      padding: 0,
     },
 
-    subtitle: {
-      maxWidth:
-        310,
-
-      marginTop:
-        9,
-
-      fontSize:
-        14,
-
-      lineHeight:
-        21,
-
-      fontWeight:
-        '500',
-
-      textAlign:
-        'center',
-    },
 
     /*
+     * ========================================================
      * FORMULÁRIO
+     * ========================================================
+     *
+     * Não existe card ao redor dos campos.
      */
-    formCard: {
-      width:
-        '100%',
 
-      marginTop:
-        27,
+    form: {
+      width: '100%',
 
-      paddingHorizontal:
-        19,
+      marginTop: 30,
 
-      paddingTop:
-        22,
+      padding: 0,
 
-      paddingBottom:
-        20,
+      backgroundColor:
+        'transparent',
 
-      borderWidth:
-        1,
+      borderWidth: 0,
 
-      borderRadius:
-        22,
+      borderRadius: 0,
+
+      shadowColor:
+        'transparent',
 
       shadowOffset: {
-        width:
-          0,
+        width: 0,
 
-        height:
-          9,
+        height: 0,
       },
 
-      shadowOpacity:
-        0.12,
+      shadowOpacity: 0,
 
-      shadowRadius:
-        15,
+      shadowRadius: 0,
 
-      elevation:
-        5,
+      elevation: 0,
     },
+
+
+    /*
+     * ========================================================
+     * CONTAINER DE CADA CAMPO
+     * ========================================================
+     */
 
     fieldContainer: {
-      width:
-        '100%',
+      width: '100%',
 
-      marginBottom:
-        17,
+      marginBottom: 17,
+
+      padding: 0,
+
+      backgroundColor:
+        'transparent',
     },
 
-    labelContainer: {
-      flexDirection:
-        'row',
-
-      alignItems:
-        'center',
-
-      marginBottom:
-        8,
-
-      marginLeft:
-        3,
-    },
-
-    label: {
-      marginLeft:
-        7,
-
-      fontSize:
-        14,
-
-      lineHeight:
-        20,
-
-      fontWeight:
-        '800',
-    },
-
-    forgotPasswordButton: {
-      alignSelf:
-        'flex-end',
-
-      minHeight:
-        36,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      marginTop:
-        -4,
-
-      marginBottom:
-        15,
-
-      paddingHorizontal:
-        3,
-    },
-
-    forgotPasswordText: {
-      fontSize:
-        13,
-
-      lineHeight:
-        19,
-
-      fontWeight:
-        '800',
-    },
 
     /*
-     * BOTÃO ENTRAR
+     * ========================================================
+     * LABEL
+     * ========================================================
      */
-    loginButton: {
-      width:
-        '100%',
 
-      minHeight:
-        56,
+    label: {
+      width: '100%',
 
-      flexDirection:
-        'row',
+      marginBottom: 8,
 
-      alignItems:
-        'center',
+      marginLeft: 0,
 
-      justifyContent:
-        'center',
+      fontSize: 15,
 
-      paddingHorizontal:
-        22,
+      lineHeight: 20,
 
-      borderRadius:
-        28,
+      fontWeight: '600',
 
-      shadowOffset: {
-        width:
-          0,
+      includeFontPadding: false,
 
-        height:
-          8,
-      },
+      textAlign: 'left',
 
-      shadowOpacity:
-        0.26,
-
-      shadowRadius:
-        12,
-
-      elevation:
-        7,
+      padding: 0,
     },
+
+
+    /*
+     * ========================================================
+     * BOTÃO "ESQUECI MINHA SENHA"
+     * ========================================================
+     */
+
+    forgotPasswordButton: {
+      alignSelf: 'flex-end',
+
+      minHeight: 30,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+      marginTop: -5,
+
+      marginBottom: 13,
+
+      paddingHorizontal: 2,
+
+      paddingVertical: 3,
+
+      backgroundColor:
+        'transparent',
+    },
+
+
+    forgotPasswordText: {
+      fontSize: 11,
+
+      lineHeight: 16,
+
+      fontWeight: '500',
+
+      textAlign: 'right',
+
+      includeFontPadding: false,
+
+      margin: 0,
+
+      padding: 0,
+    },
+
+
+    /*
+     * ========================================================
+     * BOTÃO ENTRAR
+     * ========================================================
+     */
+
+    loginButton: {
+      width: '100%',
+
+      height: 44,
+
+      minHeight: 44,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+      paddingHorizontal: 16,
+
+      paddingVertical: 0,
+
+      borderRadius: 10,
+
+      margin: 0,
+
+      backgroundColor:
+        COLORS.primary,
+
+      overflow: 'hidden',
+
+      flexShrink: 0,
+    },
+
+
+    /*
+     * ========================================================
+     * TEXTO DO BOTÃO
+     * ========================================================
+     */
 
     loginButtonText: {
       color:
         COLORS.white,
 
-      fontSize:
-        17,
+      fontSize: 17,
 
-      lineHeight:
-        23,
+      lineHeight: 20,
 
-      fontWeight:
-        '900',
+      fontWeight: '600',
 
-      textAlign:
-        'center',
+      textAlign: 'center',
+
+      includeFontPadding: false,
+
+      margin: 0,
+
+      padding: 0,
     },
 
-    loginButtonIcon: {
-      marginLeft:
-        10,
-    },
 
     /*
+     * ========================================================
      * RODAPÉ
+     * ========================================================
      */
+
     footer: {
-      width:
-        '100%',
+      width: '100%',
 
-      flexDirection:
-        'row',
+      flexDirection: 'row',
 
-      flexWrap:
-        'wrap',
+      flexWrap: 'wrap',
 
-      alignItems:
-        'center',
+      alignItems: 'center',
 
-      justifyContent:
-        'center',
+      justifyContent: 'center',
 
-      marginTop:
-        24,
+      marginTop: 10,
 
-      paddingHorizontal:
-        8,
+      paddingHorizontal: 4,
+
+      paddingVertical: 0,
+
+      alignSelf: 'center',
     },
+
+
+    /*
+     * ========================================================
+     * TEXTO DO RODAPÉ
+     * ========================================================
+     */
 
     footerText: {
-      fontSize:
-        13,
+      fontSize: 11,
 
-      lineHeight:
-        20,
+      lineHeight: 16,
 
-      textAlign:
-        'center',
+      fontWeight: '400',
+
+      textAlign: 'center',
+
+      includeFontPadding: false,
+
+      margin: 0,
+
+      padding: 0,
     },
 
-    registerButton: {
-      minHeight:
-        34,
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      marginLeft:
-        5,
-
-      paddingHorizontal:
-        3,
-    },
-
-    registerText: {
-      fontSize:
-        13,
-
-      lineHeight:
-        20,
-
-      fontWeight:
-        '900',
-
-      textAlign:
-        'center',
-    },
 
     /*
-     * AVISO DE SEGURANÇA
+     * ========================================================
+     * BOTÃO CADASTRAR
+     * ========================================================
      */
-    securityNotice: {
-      width:
-        '100%',
 
-      flexDirection:
-        'row',
+    registerButton: {
+      minHeight: 26,
 
-      alignItems:
-        'flex-start',
+      alignItems: 'center',
 
-      marginTop:
-        18,
+      justifyContent: 'center',
 
-      paddingHorizontal:
-        14,
+      marginLeft: 3,
 
-      paddingVertical:
-        13,
+      paddingHorizontal: 2,
 
-      borderWidth:
-        1,
+      paddingVertical: 2,
 
-      borderRadius:
-        14,
+      backgroundColor:
+        'transparent',
     },
 
-    securityNoticeText: {
-      flex:
-        1,
 
-      marginLeft:
-        9,
+    /*
+     * ========================================================
+     * TEXTO CADASTRAR
+     * ========================================================
+     */
 
-      fontSize:
-        11,
+    registerText: {
+      fontSize: 11,
 
-      lineHeight:
-        17,
+      lineHeight: 16,
 
-      fontWeight:
-        '500',
+      fontWeight: '600',
+
+      textAlign: 'center',
+
+      includeFontPadding: false,
+
+      margin: 0,
+
+      padding: 0,
     },
+
   });
