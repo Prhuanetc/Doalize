@@ -1,43 +1,30 @@
 const colors = {
 
   // PRIMARY
-  primary: '#2563eb',
-
-  secondary: '#1d4ed8',
-
+  primary: '#3AC2F8',
+  secondary: '#2594BD',
   success: '#22c55e',
-
   danger: '#ef4444',
-
   warning: '#f59e0b',
 
 
   // LIGHT
-  background: '#f5f7fb',
-
-  card: '#ffffff',
-
-  inputBackground: '#f1f5f9',
-
-  text: '#111827',
-
-  textSecondary: '#6b7280',
-
-  border: '#e5e7eb',
+  background: '#F5F5F5',
+  card: '#FFFFFF',
+  inputBackground: '#F1F5F9',
+  text: '#141414',
+  textSecondary: '#6B7280',
+  border: '#D9D9D9',
 
 
   // DARK
-  darkBackground: '#0f172a',
+  darkBackground: '#141414',
+  darkCard: '#6e6e6e',
+  darkInputBackground: '#F5F5F5',
+  darkText: '#F5F5F5',
+  darkTextSecondary: '#B8B8B8',
+  darkBorder: '#F5F5F5',
 
-  darkCard: '#1e293b',
-
-  darkInputBackground: '#334155',
-
-  darkText: '#f8fafc',
-
-  darkTextSecondary: '#94a3b8',
-
-  darkBorder: '#475569',
 };
 
 export default colors;

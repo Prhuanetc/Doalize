@@ -1,37 +1,49 @@
 import colors from './colors';
 
+
 const darkTheme = {
 
   // PRIMARY
-  primary: colors.primary,
+  primary:
+    colors.primary,
 
-  secondary: colors.secondary,
+  secondary:
+    colors.secondary,
 
-  success: colors.success,
+  success:
+    colors.success,
 
-  danger: colors.danger,
+  danger:
+    colors.danger,
 
-  warning: colors.warning,
+  warning:
+    colors.warning,
 
 
   // BACKGROUND
-  background: colors.darkBackground,
+  background:
+    colors.darkBackground,
 
-  card: colors.darkCard,
+  card:
+    colors.darkCard,
 
   inputBackground:
     colors.darkInputBackground,
 
 
   // TEXT
-  text: colors.darkText,
+  text:
+    colors.darkText,
 
   textSecondary:
     colors.darkTextSecondary,
 
 
   // BORDER
-  border: colors.darkBorder,
+  border:
+    colors.darkBorder,
+
 };
+
 
 export default darkTheme;

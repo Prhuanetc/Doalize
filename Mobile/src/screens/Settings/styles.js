@@ -9,26 +9,26 @@ export default StyleSheet.create({
 
   content: {
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 50,
+    paddingTop: 22,
+    paddingBottom: 60,
   },
 
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '800',
-    marginBottom: 16,
+    marginBottom: 18,
   },
 
   label: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    marginBottom: 10,
-    marginLeft: 4,
+    marginBottom: 9,
+    marginLeft: 2,
   },
 
   photoContainer: {
     alignItems: 'center',
-    marginBottom: 26,
+    marginBottom: 28,
   },
 
   avatarContainer: {
@@ -38,8 +38,10 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    backgroundColor: 'transparent',
-    marginBottom: 14,
+    backgroundColor: '#1B1B1B',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
   },
 
   avatar: {
@@ -60,39 +62,43 @@ export default StyleSheet.create({
   changePhotoButton: {
     paddingHorizontal: 22,
     paddingVertical: 11,
-    borderRadius: 12,
+    borderRadius: 10,
+    minWidth: 132,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   changePhotoText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#141414',
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   cancelPhotoButton: {
-    marginTop: 12,
-    padding: 6,
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
 
   characterCount: {
     fontSize: 12,
     textAlign: 'right',
-    marginTop: -8,
-    marginBottom: 14,
-    marginRight: 4,
+    marginTop: -7,
+    marginBottom: 16,
+    marginRight: 3,
   },
 
   divider: {
     width: '100%',
     height: 1,
-    marginTop: 14,
-    marginBottom: 24,
+    marginTop: 22,
+    marginBottom: 26,
   },
 
   helperText: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 16,
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 17,
   },
 
   passwordSection: {

@@ -1,4 +1,7 @@
-import { StyleSheet } from 'react-native';
+import {
+  StyleSheet,
+} from 'react-native';
+
 
 export default StyleSheet.create({
 
@@ -7,19 +10,26 @@ export default StyleSheet.create({
 
     height: 56,
 
-    borderRadius: 14,
+    borderRadius: 10,
 
-    justifyContent: 'center',
+    justifyContent:
+      'center',
 
-    alignItems: 'center',
+    alignItems:
+      'center',
 
     marginBottom: 14,
   },
 
+
   text: {
     fontSize: 16,
 
-    fontWeight: '700',
+    fontWeight:
+      '700',
+
+    textAlign:
+      'center',
   },
 
 });

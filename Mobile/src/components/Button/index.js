@@ -8,7 +8,9 @@ import {
 
 import styles from './styles';
 
-import { useTheme } from '../../hooks/useTheme';
+import {
+  useTheme,
+} from '../../hooks/useTheme';
 
 
 export default function Button({
@@ -19,29 +21,47 @@ export default function Button({
   type = 'primary',
 }) {
 
-  const { theme } = useTheme();
+  const {
+    theme,
+  } = useTheme();
 
 
   const buttonStyles = {
+
     primary: {
-      backgroundColor: theme.primary,
-      textColor: '#ffffff',
+      backgroundColor:
+        theme.primary,
+
+      textColor:
+        '#141414',
     },
 
     secondary: {
-      backgroundColor: theme.card,
-      textColor: theme.text,
+      backgroundColor:
+        '#F5F5F5',
+
+      textColor:
+        '#141414',
     },
 
     danger: {
-      backgroundColor: '#ef4444',
-      textColor: '#ffffff',
+      backgroundColor:
+        '#ef4444',
+
+      textColor:
+        '#ffffff',
     },
+
   };
 
 
   const currentStyle =
-    buttonStyles[type] || buttonStyles.primary;
+    buttonStyles[type] ||
+    buttonStyles.primary;
+
+
+  const isDisabled =
+    disabled || loading;
 
 
   return (
@@ -50,7 +70,9 @@ export default function Button({
 
       onPress={onPress}
 
-      disabled={disabled || loading}
+      disabled={
+        isDisabled
+      }
 
       style={[
         styles.button,
@@ -60,28 +82,37 @@ export default function Button({
             currentStyle.backgroundColor,
 
           opacity:
-            disabled || loading ? 0.6 : 1,
+            isDisabled
+              ? 0.6
+              : 1,
         },
       ]}
     >
 
       {loading ? (
+
         <ActivityIndicator
           size="small"
-          color={currentStyle.textColor}
+          color={
+            currentStyle.textColor
+          }
         />
+
       ) : (
+
         <Text
           style={[
             styles.text,
 
             {
-              color: currentStyle.textColor,
+              color:
+                currentStyle.textColor,
             },
           ]}
         >
           {title}
         </Text>
+
       )}
 
     </TouchableOpacity>

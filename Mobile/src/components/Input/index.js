@@ -113,8 +113,7 @@ export default function Input({
           styles.input,
 
           {
-            color:
-              theme.text,
+            color: '#141414',
           },
 
           multiline

@@ -7,7 +7,6 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import lightTheme from '../styles/theme';
-
 import darkTheme from '../styles/darkTheme';
 
 
@@ -15,14 +14,38 @@ import darkTheme from '../styles/darkTheme';
 export const ThemeContext = createContext({});
 
 
+// CHAVE ATUAL DO TEMA
+// A versão nova evita que a preferência "light"
+// antiga continue deixando o aplicativo claro.
+const THEME_STORAGE_KEY = '@doalize_theme_v3';
+
+
 // PROVIDER
-export function ThemeProvider({ children }) {
+export function ThemeProvider({
+  children,
+}) {
 
-  const [theme, setTheme] = useState(lightTheme);
+  // DARK É O PADRÃO
+  const [
+    theme,
+    setTheme,
+  ] = useState(
+    darkTheme
+  );
 
-  const [darkMode, setDarkMode] = useState(false);
+  const [
+    darkMode,
+    setDarkMode,
+  ] = useState(
+    true
+  );
 
-  const [loadingTheme, setLoadingTheme] = useState(true);
+  const [
+    loadingTheme,
+    setLoadingTheme,
+  ] = useState(
+    true
+  );
 
 
   // CARREGAR TEMA
@@ -30,32 +53,59 @@ export function ThemeProvider({ children }) {
 
     try {
 
-      const savedTheme = await AsyncStorage.getItem(
-        '@doalize_theme'
-      );
+      const savedTheme =
+        await AsyncStorage.getItem(
+          THEME_STORAGE_KEY
+        );
 
 
-      if (savedTheme === 'dark') {
+      // SOMENTE "light" ABRE O TEMA CLARO.
+      // SEM PREFERÊNCIA SALVA = DARK.
+      if (
+        savedTheme === 'light'
+      ) {
 
-        setTheme(darkTheme);
+        setTheme(
+          lightTheme
+        );
 
-        setDarkMode(true);
+        setDarkMode(
+          false
+        );
 
       } else {
 
-        setTheme(lightTheme);
+        setTheme(
+          darkTheme
+        );
 
-        setDarkMode(false);
+        setDarkMode(
+          true
+        );
 
       }
 
     } catch (error) {
 
-      console.log('Erro ao carregar tema:', error);
+      console.log(
+        'Erro ao carregar tema:',
+        error
+      );
+
+      // Em caso de erro, mantém DARK
+      setTheme(
+        darkTheme
+      );
+
+      setDarkMode(
+        true
+      );
 
     } finally {
 
-      setLoadingTheme(false);
+      setLoadingTheme(
+        false
+      );
 
     }
   }
@@ -66,25 +116,37 @@ export function ThemeProvider({ children }) {
 
     try {
 
-      if (darkMode) {
+      if (
+        darkMode
+      ) {
 
-        setTheme(lightTheme);
+        // DARK -> LIGHT
+        setTheme(
+          lightTheme
+        );
 
-        setDarkMode(false);
+        setDarkMode(
+          false
+        );
 
         await AsyncStorage.setItem(
-          '@doalize_theme',
+          THEME_STORAGE_KEY,
           'light'
         );
 
       } else {
 
-        setTheme(darkTheme);
+        // LIGHT -> DARK
+        setTheme(
+          darkTheme
+        );
 
-        setDarkMode(true);
+        setDarkMode(
+          true
+        );
 
         await AsyncStorage.setItem(
-          '@doalize_theme',
+          THEME_STORAGE_KEY,
           'dark'
         );
 
@@ -92,7 +154,10 @@ export function ThemeProvider({ children }) {
 
     } catch (error) {
 
-      console.log('Erro ao alterar tema:', error);
+      console.log(
+        'Erro ao alterar tema:',
+        error
+      );
 
     }
   }
