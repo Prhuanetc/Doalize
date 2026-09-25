@@ -30,10 +30,6 @@ import Header from '../../components/Header';
 
 import PostCard from '../../components/PostCard';
 
-import {
-  useTheme,
-} from '../../hooks/useTheme';
-
 import api from '../../services/api';
 
 import {
@@ -44,35 +40,42 @@ import {
 
 import styles from './styles';
 
+
 /*
- * EXTRAIR PUBLICAÇÕES
- * DA RESPOSTA DA API
+ * ============================================================
+ * CORES DA HOME
+ * ============================================================
  *
- * Formatos suportados:
- *
- * [...]
- *
- * {
- *   posts: [...]
- * }
- *
- * {
- *   data: [...]
- * }
- *
- * {
- *   data: {
- *     posts: [...]
- *   }
- * }
- *
- * {
- *   results: [...]
- * }
+ * Nesta etapa a Home começa diretamente no mesmo Dark Mode
+ * utilizado na tela inicial e no Login.
  */
+const COLORS = {
+  background: '#141414',
+
+  text: '#F5F5F5',
+
+  textSecondary: 'rgba(245, 245, 245, 0.72)',
+
+  primary: '#3AC2F8',
+
+  deepBlue: '#155269',
+
+  white: '#FFFFFF',
+
+  divider: 'rgba(245, 245, 245, 0.22)',
+};
+
+
+/*
+ * ============================================================
+ * EXTRAIR PUBLICAÇÕES DA RESPOSTA DA API
+ * ============================================================
+ */
+
 function extractPostsFromResponse(
   responseData
 ) {
+
   if (
     Array.isArray(
       responseData
@@ -80,6 +83,7 @@ function extractPostsFromResponse(
   ) {
     return responseData;
   }
+
 
   if (
     Array.isArray(
@@ -89,6 +93,7 @@ function extractPostsFromResponse(
     return responseData.posts;
   }
 
+
   if (
     Array.isArray(
       responseData?.data
@@ -96,6 +101,7 @@ function extractPostsFromResponse(
   ) {
     return responseData.data;
   }
+
 
   if (
     Array.isArray(
@@ -109,6 +115,7 @@ function extractPostsFromResponse(
       .posts;
   }
 
+
   if (
     Array.isArray(
       responseData?.results
@@ -117,36 +124,41 @@ function extractPostsFromResponse(
     return responseData.results;
   }
 
+
   return [];
 }
 
+
 /*
- * NORMALIZAR UMA PUBLICAÇÃO
- *
- * Caso normalizePost não reconheça
- * algum formato, os dados originais
- * da publicação serão preservados.
+ * ============================================================
+ * NORMALIZAR PUBLICAÇÃO
+ * ============================================================
  */
+
 function normalizeFeedPost(
   post
 ) {
+
   if (
     !post ||
-    typeof post !==
-      'object'
+    typeof post !== 'object'
   ) {
     return null;
   }
 
-  let normalizedPost =
-    null;
+
+  let normalizedPost = null;
+
 
   try {
+
     normalizedPost =
       normalizePost(
         post
       );
+
   } catch (error) {
+
     console.log(
       'ERRO AO NORMALIZAR PUBLICAÇÃO:',
       {
@@ -157,7 +169,9 @@ function normalizeFeedPost(
           error.message,
       }
     );
+
   }
+
 
   const safePost =
     normalizedPost &&
@@ -166,10 +180,12 @@ function normalizeFeedPost(
       ? normalizedPost
       : post;
 
-  let normalizedImages =
-    [];
+
+  let normalizedImages = [];
+
 
   try {
+
     normalizedImages =
       parsePostImages(
         safePost?.images ||
@@ -177,7 +193,9 @@ function normalizeFeedPost(
         safePost?.image ||
         post?.image
       );
+
   } catch (error) {
+
     console.log(
       'ERRO AO NORMALIZAR IMAGENS:',
       {
@@ -188,29 +206,41 @@ function normalizeFeedPost(
           error.message,
       }
     );
+
   }
 
+
   return {
+
     ...post,
+
     ...safePost,
+
 
     id:
       safePost?.id ??
       post?.id,
 
+
     images:
       normalizedImages,
 
+
     user: {
+
       ...post?.user,
+
       ...safePost?.user,
+
     },
+
 
     promoted:
       Boolean(
         safePost?.promoted ??
         post?.promoted
       ),
+
 
     promoted_by_me:
       Boolean(
@@ -219,6 +249,7 @@ function normalizeFeedPost(
         post
           ?.promoted_by_me
       ),
+
 
     promotion_count:
       Math.max(
@@ -231,78 +262,97 @@ function normalizeFeedPost(
           0
         )
       ),
+
   };
 }
+
+
+/*
+ * ============================================================
+ * HOME SCREEN
+ * ============================================================
+ */
 
 export default function HomeScreen({
   navigation,
 }) {
-  const {
-    theme,
-  } = useTheme();
 
   const [
     posts,
     setPosts,
   ] = useState([]);
 
+
   const [
     loading,
     setLoading,
   ] = useState(true);
+
 
   const [
     refreshing,
     setRefreshing,
   ] = useState(false);
 
+
   const [
     feedError,
     setFeedError,
   ] = useState('');
+
 
   const [
     sharingPostId,
     setSharingPostId,
   ] = useState(null);
 
+
   /*
-   * REFERÊNCIA DA QUANTIDADE
-   * DE PUBLICAÇÕES
-   *
-   * Evita criar um ciclo de
-   * recarregamento no useFocusEffect.
+   * Quantidade de posts atual.
    */
   const postsCountRef =
     useRef(0);
 
+
   /*
+   * ============================================================
    * CARREGAR PUBLICAÇÕES
+   * ============================================================
    */
+
   const loadPosts =
     useCallback(
       async ({
         showInitialLoading = false,
         showRefreshLoading = false,
       } = {}) => {
+
         try {
+
           setFeedError('');
+
 
           if (
             showInitialLoading
           ) {
+
             setLoading(
               true
             );
+
           }
+
 
           if (
             showRefreshLoading
           ) {
+
             setRefreshing(
               true
             );
+
           }
+
 
           console.log(
             'CARREGANDO FEED:',
@@ -323,18 +373,22 @@ export default function HomeScreen({
             }
           );
 
+
           const response =
             await api.get(
               '/posts'
             );
 
+
           const responseData =
             response.data;
+
 
           const receivedPosts =
             extractPostsFromResponse(
               responseData
             );
+
 
           console.log(
             'RESPOSTA BRUTA DO FEED:',
@@ -376,6 +430,7 @@ export default function HomeScreen({
             }
           );
 
+
           const normalizedPosts =
             receivedPosts
               .map(
@@ -384,6 +439,7 @@ export default function HomeScreen({
               .filter(
                 Boolean
               );
+
 
           console.log(
             'FEED NORMALIZADO:',
@@ -422,18 +478,23 @@ export default function HomeScreen({
             )
           );
 
+
           postsCountRef.current =
             normalizedPosts.length;
+
 
           setPosts(
             normalizedPosts
           );
+
         } catch (error) {
+
           const errorMessage =
             error.response
               ?.data
               ?.message ||
             'Não foi possível carregar o Feed.';
+
 
           console.log(
             'ERRO AO CARREGAR FEED:',
@@ -465,24 +526,26 @@ export default function HomeScreen({
             }
           );
 
+
           setFeedError(
             errorMessage
           );
 
-          /*
-           * Não limpa publicações que
-           * já estavam carregadas.
-           */
+
           if (
             postsCountRef.current ===
             0
           ) {
+
             Alert.alert(
               'Erro ao carregar',
               errorMessage
             );
+
           }
+
         } finally {
+
           setLoading(
             false
           );
@@ -490,32 +553,43 @@ export default function HomeScreen({
           setRefreshing(
             false
           );
+
         }
+
       },
       []
     );
 
+
   /*
-   * RECARREGAR O FEED QUANDO
-   * A HOME RECEBER FOCO
+   * ============================================================
+   * RECARREGAR AO VOLTAR PARA A HOME
+   * ============================================================
    */
+
   useFocusEffect(
     useCallback(() => {
+
       loadPosts({
         showInitialLoading:
           postsCountRef.current ===
           0,
       });
+
     }, [
       loadPosts,
     ])
   );
 
+
   /*
-   * ATUALIZAR ARRASTANDO
-   * PARA BAIXO
+   * ============================================================
+   * REFRESH
+   * ============================================================
    */
+
   function handleRefresh() {
+
     if (
       refreshing ||
       loading
@@ -523,16 +597,23 @@ export default function HomeScreen({
       return;
     }
 
+
     loadPosts({
       showRefreshLoading:
         true,
     });
+
   }
 
+
   /*
-   * TENTAR CARREGAR NOVAMENTE
+   * ============================================================
+   * RETRY
+   * ============================================================
    */
+
   function handleRetry() {
+
     if (
       loading ||
       refreshing
@@ -540,21 +621,29 @@ export default function HomeScreen({
       return;
     }
 
+
     loadPosts({
       showInitialLoading:
         true,
     });
+
   }
 
+
   /*
+   * ============================================================
    * ABRIR DETALHES
+   * ============================================================
    */
+
   function handleOpenPost(
     post
   ) {
+
     if (!post) {
       return;
     }
+
 
     navigation.navigate(
       'DetailsScreen',
@@ -562,15 +651,20 @@ export default function HomeScreen({
         post,
       }
     );
+
   }
 
+
   /*
-   * IDENTIFICAR EXTENSÃO
-   * DA IMAGEM
+   * ============================================================
+   * EXTENSÃO DA IMAGEM
+   * ============================================================
    */
+
   function getImageExtension(
     imageUrl
   ) {
+
     if (
       !imageUrl ||
       typeof imageUrl !==
@@ -579,10 +673,12 @@ export default function HomeScreen({
       return 'jpg';
     }
 
+
     const cleanUrl =
       imageUrl
         .split('?')[0]
         .toLowerCase();
+
 
     if (
       cleanUrl.endsWith(
@@ -592,6 +688,7 @@ export default function HomeScreen({
       return 'png';
     }
 
+
     if (
       cleanUrl.endsWith(
         '.webp'
@@ -599,6 +696,7 @@ export default function HomeScreen({
     ) {
       return 'webp';
     }
+
 
     if (
       cleanUrl.endsWith(
@@ -608,22 +706,28 @@ export default function HomeScreen({
       return 'jpeg';
     }
 
+
     return 'jpg';
   }
 
+
   /*
-   * CRIAR TEXTO PARA
-   * COMPARTILHAMENTO
+   * ============================================================
+   * TEXTO DE COMPARTILHAMENTO
+   * ============================================================
    */
+
   function createShareMessage(
     post
   ) {
+
     const responsibleName =
       typeof post?.user?.name ===
         'string' &&
       post.user.name.trim()
         ? post.user.name.trim()
         : 'Usuário do Doalize';
+
 
     const summary =
       typeof post?.summary ===
@@ -632,12 +736,14 @@ export default function HomeScreen({
         ? post.summary.trim()
         : '';
 
+
     const description =
       typeof post?.description ===
         'string' &&
       post.description.trim()
         ? post.description.trim()
         : '';
+
 
     const contactEmail =
       typeof post?.user
@@ -660,73 +766,89 @@ export default function HomeScreen({
               : ''
           );
 
+
     const messageParts = [
       'Confira esta publicação no Doalize!',
     ];
 
+
     if (summary) {
+
       messageParts.push(
         `Resumo:\n${summary}`
       );
+
     }
+
 
     if (
       description &&
       description !==
         summary
     ) {
+
       messageParts.push(
         `Descrição:\n${description}`
       );
+
     }
+
 
     messageParts.push(
       `Responsável:\n${responsibleName}`
     );
 
+
     if (contactEmail) {
+
       messageParts.push(
         `Contato:\n${contactEmail}`
       );
+
     } else {
+
       messageParts.push(
         'Contato:\nEntre em contato pelo aplicativo Doalize.'
       );
+
     }
+
 
     messageParts.push(
       'Doalize\nConectando pessoas a causas solidárias.'
     );
 
+
     return messageParts.join(
       '\n\n'
     );
+
   }
 
+
   /*
-   * PREPARAR IMAGEM PARA
-   * COMPARTILHAMENTO
-   *
-   * O Share nativo aceita o URI
-   * em plataformas compatíveis.
-   *
-   * O texto permanece disponível
-   * mesmo que a imagem não seja aceita
-   * pelo aplicativo escolhido.
+   * ============================================================
+   * PREPARAR IMAGEM PARA COMPARTILHAMENTO
+   * ============================================================
    */
+
   async function prepareImageForShare(
     post
   ) {
-    let parsedImages =
-      [];
+
+    let parsedImages = [];
+
 
     try {
+
       parsedImages =
         parsePostImages(
           post?.images ||
           post?.image
         );
+
     } catch (error) {
+
       console.log(
         'ERRO AO IDENTIFICAR IMAGEM PARA COMPARTILHAR:',
         {
@@ -738,8 +860,11 @@ export default function HomeScreen({
         }
       );
 
+
       return null;
+
     }
+
 
     if (
       parsedImages.length ===
@@ -748,36 +873,45 @@ export default function HomeScreen({
       return null;
     }
 
+
     const selectedImage =
       parsedImages[0];
+
 
     const imageUrl =
       resolveImageUrl(
         selectedImage
       );
 
+
     if (!imageUrl) {
       return null;
     }
+
 
     const extension =
       getImageExtension(
         imageUrl
       );
 
+
     const cacheDirectory =
       FileSystem
         .cacheDirectory;
+
 
     if (!cacheDirectory) {
       return null;
     }
 
+
     const temporaryFileName =
       `doalize-post-${post.id}.${extension}`;
 
+
     const temporaryFileUri =
       `${cacheDirectory}${temporaryFileName}`;
+
 
     const previousFile =
       await FileSystem
@@ -785,9 +919,11 @@ export default function HomeScreen({
           temporaryFileUri
         );
 
+
     if (
       previousFile.exists
     ) {
+
       await FileSystem
         .deleteAsync(
           temporaryFileUri,
@@ -796,19 +932,9 @@ export default function HomeScreen({
               true,
           }
         );
+
     }
 
-    console.log(
-      'BAIXANDO IMAGEM PARA COMPARTILHAR:',
-      {
-        postId:
-          post.id,
-
-        imageUrl,
-
-        temporaryFileUri,
-      }
-    );
 
     const downloadResult =
       await FileSystem
@@ -817,22 +943,31 @@ export default function HomeScreen({
           temporaryFileUri
         );
 
+
     if (
       !downloadResult?.uri
     ) {
       return null;
     }
 
+
     return downloadResult.uri;
+
   }
 
+
   /*
-   * COMPARTILHAR PUBLICAÇÃO
+   * ============================================================
+   * COMPARTILHAR
+   * ============================================================
    */
+
   async function handleShare(
     post
   ) {
+
     if (!post?.id) {
+
       Alert.alert(
         'Erro',
         'A publicação selecionada é inválida.'
@@ -841,36 +976,42 @@ export default function HomeScreen({
       return;
     }
 
+
     if (
       sharingPostId !==
       null
     ) {
+
       return;
+
     }
 
+
     try {
+
       setSharingPostId(
         post.id
       );
+
 
       const shareMessage =
         createShareMessage(
           post
         );
 
-      let imageUri =
-        null;
+
+      let imageUri = null;
+
 
       try {
+
         imageUri =
           await prepareImageForShare(
             post
           );
+
       } catch (imageError) {
-        /*
-         * Se a imagem não puder ser
-         * preparada, compartilha o texto.
-         */
+
         console.log(
           'NÃO FOI POSSÍVEL PREPARAR A IMAGEM:',
           {
@@ -881,24 +1022,28 @@ export default function HomeScreen({
               imageError.message,
           }
         );
+
       }
 
+
       const shareContent = {
+
         title:
           'Publicação do Doalize',
 
         message:
           shareMessage,
+
       };
 
-      /*
-       * O URI local é incluído quando
-       * estiver disponível.
-       */
+
       if (imageUri) {
+
         shareContent.url =
           imageUri;
+
       }
+
 
       const result =
         await Share.share(
@@ -911,6 +1056,7 @@ export default function HomeScreen({
               'Publicação do Doalize',
           }
         );
+
 
       console.log(
         'RESULTADO DO COMPARTILHAMENTO:',
@@ -930,12 +1076,15 @@ export default function HomeScreen({
             ),
         }
       );
+
     } catch (error) {
+
       const errorMessage =
         String(
           error?.message ||
           ''
         ).toLowerCase();
+
 
       const canceled =
         errorMessage.includes(
@@ -944,6 +1093,7 @@ export default function HomeScreen({
         errorMessage.includes(
           'dismiss'
         );
+
 
       console.log(
         'ERRO AO COMPARTILHAR PUBLICAÇÃO:',
@@ -958,45 +1108,62 @@ export default function HomeScreen({
         }
       );
 
+
       if (!canceled) {
+
         Alert.alert(
           'Erro',
           error.message ||
             'Não foi possível compartilhar a publicação.'
         );
+
       }
+
     } finally {
+
       setSharingPostId(
         null
       );
+
     }
+
   }
 
+
   /*
-   * PROMOVER OU REMOVER
-   * A PROMOÇÃO
+   * ============================================================
+   * PROMOVER PUBLICAÇÃO
+   * ============================================================
    */
+
   async function handlePromote(
     post
   ) {
+
     if (!post?.id) {
+
       Alert.alert(
         'Erro',
         'A publicação selecionada é inválida.'
       );
 
       return;
+
     }
 
+
     try {
+
       const response =
         await api.post(
           `/posts/promote/${post.id}`
         );
 
+
       const responseData =
         response.data ||
         {};
+
 
       const promoted =
         Boolean(
@@ -1004,11 +1171,13 @@ export default function HomeScreen({
             .promoted
         );
 
+
       const promotedByMe =
         Boolean(
           responseData
             .promoted_by_me
         );
+
 
       const promotionCount =
         Math.max(
@@ -1020,10 +1189,12 @@ export default function HomeScreen({
           )
         );
 
+
       setPosts(
         (currentPosts) =>
           currentPosts.map(
             (currentPost) => {
+
               if (
                 Number(
                   currentPost.id
@@ -1032,10 +1203,14 @@ export default function HomeScreen({
                   post.id
                 )
               ) {
+
                 return currentPost;
+
               }
 
+
               return {
+
                 ...currentPost,
 
                 promoted,
@@ -1045,10 +1220,13 @@ export default function HomeScreen({
 
                 promotion_count:
                   promotionCount,
+
               };
+
             }
           )
       );
+
 
       Alert.alert(
         'Sucesso',
@@ -1060,7 +1238,9 @@ export default function HomeScreen({
               : 'Promoção removida.'
           )
       );
+
     } catch (error) {
+
       console.log(
         'ERRO AO PROMOVER PUBLICAÇÃO:',
         {
@@ -1080,6 +1260,7 @@ export default function HomeScreen({
         }
       );
 
+
       Alert.alert(
         'Erro',
         error.response
@@ -1087,143 +1268,177 @@ export default function HomeScreen({
           ?.message ||
           'Não foi possível alterar a promoção.'
       );
+
     }
+
   }
 
+
   /*
+   * ============================================================
    * RENDERIZAR PUBLICAÇÃO
+   * ============================================================
    */
+
   function renderItem({
     item,
   }) {
+
     return (
-      <View>
+
+      <View
+        style={
+          localStyles.postWrapper
+        }
+      >
+
         <PostCard
+
           post={
             item
           }
+
           onPress={() =>
             handleOpenPost(
               item
             )
           }
+
           onShare={() =>
             handleShare(
               item
             )
           }
+
           onPromote={() =>
             handlePromote(
               item
             )
           }
+
         />
 
-        {sharingPostId ===
-        item?.id ? (
-          <View
-            style={[
-              localStyles.sharingIndicator,
-              {
-                backgroundColor:
-                  theme.card,
-              },
-            ]}
-          >
-            <ActivityIndicator
-              size="small"
-              color={
-                theme.primary
-              }
-            />
 
-            <Text
-              style={[
-                localStyles.sharingText,
-                {
-                  color:
-                    theme
-                      .textSecondary,
-                },
-              ]}
+        {
+          sharingPostId ===
+          item?.id ? (
+
+            <View
+              style={
+                localStyles.sharingIndicator
+              }
             >
-              Preparando compartilhamento...
-            </Text>
-          </View>
-        ) : null}
+
+              <ActivityIndicator
+                size="small"
+                color={
+                  COLORS.primary
+                }
+              />
+
+
+              <Text
+                style={
+                  localStyles.sharingText
+                }
+              >
+                Preparando compartilhamento...
+              </Text>
+
+            </View>
+
+          ) : null
+        }
+
       </View>
+
     );
+
   }
 
+
   /*
-   * CARREGAMENTO INICIAL
+   * ============================================================
+   * LOADING INICIAL
+   * ============================================================
    */
+
   if (
     loading &&
     posts.length ===
       0
   ) {
+
     return (
+
       <View
-        style={[
-          styles.container,
-          {
-            backgroundColor:
-              theme.background,
-          },
-        ]}
+        style={
+          styles.container
+        }
       >
+
         <Header
           title="DOALIZE"
         />
+
 
         <View
           style={
             localStyles.loadingContainer
           }
         >
+
           <ActivityIndicator
             size="large"
             color={
-              theme.primary
+              COLORS.primary
             }
           />
 
+
           <Text
-            style={[
-              localStyles.loadingText,
-              {
-                color:
-                  theme
-                    .textSecondary,
-              },
-            ]}
+            style={
+              localStyles.loadingText
+            }
           >
             Carregando publicações...
           </Text>
+
         </View>
+
       </View>
+
     );
+
   }
 
+
+  /*
+   * ============================================================
+   * HOME
+   * ============================================================
+   */
+
   return (
+
     <View
-      style={[
-        styles.container,
-        {
-          backgroundColor:
-            theme.background,
-        },
-      ]}
+      style={
+        styles.container
+      }
     >
+
       <Header
         title="DOALIZE"
       />
 
+
       <FlatList
+
         data={
           posts
         }
+
+
         keyExtractor={(
           item,
           index
@@ -1233,12 +1448,18 @@ export default function HomeScreen({
             index
           )
         }
+
+
         renderItem={
           renderItem
         }
+
+
         showsVerticalScrollIndicator={
           false
         }
+
+
         contentContainerStyle={[
           styles.feed,
 
@@ -1247,155 +1468,258 @@ export default function HomeScreen({
             ? localStyles.emptyList
             : null,
         ]}
+
+
         nestedScrollEnabled
+
+
         directionalLockEnabled
+
+
         keyboardShouldPersistTaps="handled"
+
+
         refreshControl={
+
           <RefreshControl
+
             refreshing={
               refreshing
             }
+
             onRefresh={
               handleRefresh
             }
+
             tintColor={
-              theme.primary
+              COLORS.primary
             }
+
             colors={[
-              theme.primary,
+              COLORS.primary,
             ]}
+
+            progressBackgroundColor={
+              COLORS.deepBlue
+            }
+
           />
+
         }
+
+
         ListEmptyComponent={
+
           <View
             style={
               localStyles.emptyContainer
             }
           >
+
             <Ionicons
               name={
                 feedError
                   ? 'cloud-offline-outline'
                   : 'newspaper-outline'
               }
-              size={58}
+              size={54}
               color={
-                theme
-                  .textSecondary
+                COLORS.textSecondary
               }
             />
 
-            <Text
-              style={[
-                localStyles.emptyTitle,
-                {
-                  color:
-                    theme.text,
-                },
-              ]}
-            >
-              {feedError
-                ? 'Não foi possível carregar'
-                : 'Nenhuma publicação'}
-            </Text>
 
             <Text
-              style={[
-                localStyles.emptyDescription,
-                {
-                  color:
-                    theme
-                      .textSecondary,
-                },
-              ]}
+              style={
+                localStyles.emptyTitle
+              }
             >
-              {feedError
-                ? feedError
-                : 'As publicações criadas pelos usuários aparecerão aqui.'}
+              {
+                feedError
+                  ? 'Não foi possível carregar'
+                  : 'Nenhuma publicação'
+              }
             </Text>
 
-            {feedError ? (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={
-                  handleRetry
-                }
-                disabled={
-                  loading
-                }
-                style={[
-                  localStyles.retryButton,
+
+            <Text
+              style={
+                localStyles.emptyDescription
+              }
+            >
+              {
+                feedError
+                  ? feedError
+                  : 'As publicações criadas pelos usuários aparecerão aqui.'
+              }
+            </Text>
+
+
+            {
+              feedError ? (
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={
+                    handleRetry
+                  }
+                  disabled={
+                    loading
+                  }
+                  style={[
+                    localStyles.retryButton,
+                    {
+                      opacity:
+                        loading
+                          ? 0.6
+                          : 1,
+                    },
+                  ]}
+                >
+
                   {
-                    backgroundColor:
-                      theme.primary,
+                    loading ? (
 
-                    opacity:
-                      loading
-                        ? 0.6
-                        : 1,
-                  },
-                ]}
-              >
-                {loading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#ffffff"
-                  />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="refresh-outline"
-                      size={20}
-                      color="#ffffff"
-                    />
+                      <ActivityIndicator
+                        size="small"
+                        color={
+                          COLORS.white
+                        }
+                      />
 
-                    <Text
-                      style={
-                        localStyles.retryText
-                      }
-                    >
-                      Tentar novamente
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            ) : null}
+                    ) : (
+
+                      <>
+
+                        <Ionicons
+                          name="refresh-outline"
+                          size={19}
+                          color={
+                            COLORS.white
+                          }
+                        />
+
+
+                        <Text
+                          style={
+                            localStyles.retryText
+                          }
+                        >
+                          Tentar novamente
+                        </Text>
+
+                      </>
+
+                    )
+                  }
+
+                </TouchableOpacity>
+
+              ) : null
+            }
+
           </View>
+
         }
+
       />
+
     </View>
+
   );
+
 }
+
+
+/*
+ * ============================================================
+ * ESTILOS LOCAIS DA HOME
+ * ============================================================
+ */
 
 const localStyles =
   StyleSheet.create({
+
+    /*
+     * ========================================================
+     * WRAPPER DA PUBLICAÇÃO
+     * ========================================================
+     *
+     * Mantém as publicações em uma coluna contínua.
+     */
+    postWrapper: {
+      width: '100%',
+
+      margin: 0,
+
+      padding: 0,
+
+      backgroundColor:
+        COLORS.background,
+    },
+
+
+    /*
+     * ========================================================
+     * LOADING
+     * ========================================================
+     */
     loadingContainer: {
-      flex:
-        1,
+      flex: 1,
 
       alignItems:
         'center',
 
       justifyContent:
         'center',
+
+      backgroundColor:
+        COLORS.background,
+
+      paddingHorizontal:
+        24,
     },
+
 
     loadingText: {
       marginTop:
         12,
 
       fontSize:
-        15,
+        14,
+
+      lineHeight:
+        20,
+
+      fontWeight:
+        '400',
+
+      color:
+        COLORS.textSecondary,
+
+      textAlign:
+        'center',
+
+      includeFontPadding:
+        false,
     },
 
+
+    /*
+     * ========================================================
+     * LISTA VAZIA
+     * ========================================================
+     */
     emptyList: {
-      flexGrow:
-        1,
+      flexGrow: 1,
+
+      backgroundColor:
+        COLORS.background,
     },
+
 
     emptyContainer: {
-      flex:
-        1,
+      flex: 1,
 
       alignItems:
         'center',
@@ -1404,25 +1728,39 @@ const localStyles =
         'center',
 
       paddingHorizontal:
-        30,
+        28,
 
       paddingBottom:
-        60,
+        40,
+
+      backgroundColor:
+        COLORS.background,
     },
+
 
     emptyTitle: {
       marginTop:
-        16,
+        15,
 
       fontSize:
-        20,
+        19,
+
+      lineHeight:
+        24,
 
       fontWeight:
-        '800',
+        '600',
+
+      color:
+        COLORS.text,
 
       textAlign:
         'center',
+
+      includeFontPadding:
+        false,
     },
+
 
     emptyDescription: {
       maxWidth:
@@ -1432,21 +1770,36 @@ const localStyles =
         8,
 
       fontSize:
-        14,
+        13,
 
       lineHeight:
-        21,
+        19,
+
+      fontWeight:
+        '400',
+
+      color:
+        COLORS.textSecondary,
 
       textAlign:
         'center',
+
+      includeFontPadding:
+        false,
     },
 
+
+    /*
+     * ========================================================
+     * BOTÃO DE RETRY
+     * ========================================================
+     */
     retryButton: {
       minWidth:
-        190,
+        180,
 
       minHeight:
-        48,
+        44,
 
       flexDirection:
         'row',
@@ -1458,32 +1811,48 @@ const localStyles =
         'center',
 
       marginTop:
-        22,
-
-      paddingHorizontal:
         20,
 
-      borderRadius:
-        24,
+      paddingHorizontal:
+        18,
 
-      elevation:
-        4,
+      borderRadius:
+        10,
+
+      backgroundColor:
+        COLORS.primary,
+
+      overflow:
+        'hidden',
     },
+
 
     retryText: {
       marginLeft:
         8,
 
       color:
-        '#ffffff',
+        COLORS.white,
 
       fontSize:
         14,
 
+      lineHeight:
+        18,
+
       fontWeight:
-        '800',
+        '600',
+
+      includeFontPadding:
+        false,
     },
 
+
+    /*
+     * ========================================================
+     * INDICADOR DE COMPARTILHAMENTO
+     * ========================================================
+     */
     sharingIndicator: {
       flexDirection:
         'row',
@@ -1495,32 +1864,43 @@ const localStyles =
         'center',
 
       marginTop:
-        -8,
+        -5,
 
       marginBottom:
-        12,
+        10,
 
       paddingHorizontal:
-        14,
+        13,
 
       paddingVertical:
-        8,
+        7,
 
       borderRadius:
-        18,
+        15,
 
-      elevation:
-        2,
+      backgroundColor:
+        COLORS.deepBlue,
     },
+
 
     sharingText: {
       marginLeft:
         8,
 
       fontSize:
-        12,
+        11,
 
       lineHeight:
-        18,
+        16,
+
+      fontWeight:
+        '400',
+
+      color:
+        COLORS.textSecondary,
+
+      includeFontPadding:
+        false,
     },
+
   });

@@ -1,103 +1,308 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import {
+  StyleSheet,
+} from 'react-native';
 
-const { width } = Dimensions.get('window');
 
 export default StyleSheet.create({
 
+  /*
+   * ============================================================
+   * CONTAINER PRINCIPAL
+   * ============================================================
+   *
+   * Fundo oficial do Dark Mode.
+   */
   container: {
     flex: 1,
+
+    width: '100%',
+
+    backgroundColor:
+      '#141414',
+
+    overflow:
+      'hidden',
   },
 
 
-  // FEED
+  /*
+   * ============================================================
+   * FEED
+   * ============================================================
+   *
+   * O feed ocupa toda a largura disponível.
+   *
+   * O espaçamento lateral da publicação é tratado pelos
+   * componentes internos para manter o alinhamento visual.
+   */
   feed: {
+    width: '100%',
+
+    paddingTop: 0,
+
+    paddingHorizontal: 0,
+
     paddingBottom: 24,
+
+    backgroundColor:
+      '#141414',
   },
 
 
-  // DETALHES
+  /*
+   * ============================================================
+   * CONTAINER DO USUÁRIO
+   * ============================================================
+   *
+   * Mantido para compatibilidade com outras partes da Home.
+   */
   userContainer: {
-    flexDirection: 'row',
+    width: '100%',
 
-    alignItems: 'center',
+    flexDirection:
+      'row',
 
-    paddingHorizontal: 16,
+    alignItems:
+      'center',
 
-    paddingVertical: 16,
+    paddingHorizontal:
+      16,
+
+    paddingVertical:
+      11,
+
+    backgroundColor:
+      'transparent',
   },
 
+
+  /*
+   * ============================================================
+   * AVATAR
+   * ============================================================
+   */
   avatar: {
-    width: 56,
+    width: 46,
 
-    height: 56,
+    height: 46,
 
-    borderRadius: 999,
+    borderRadius: 23,
+
+    overflow:
+      'hidden',
+
+    flexShrink:
+      0,
   },
 
+
+  /*
+   * ============================================================
+   * INFORMAÇÕES DO USUÁRIO
+   * ============================================================
+   */
   userInfo: {
+    flex: 1,
+
+    minWidth: 0,
+
     marginLeft: 12,
+
+    justifyContent:
+      'center',
+
+    paddingVertical: 0,
   },
 
+
+  /*
+   * ============================================================
+   * NOME
+   * ============================================================
+   */
   username: {
-    fontSize: 17,
+    fontSize: 15,
 
-    fontWeight: '700',
+    lineHeight: 20,
+
+    fontWeight: '600',
+
+    includeFontPadding:
+      false,
+
+    margin: 0,
+
+    padding: 0,
+
+    color:
+      '#F5F5F5',
   },
 
+
+  /*
+   * ============================================================
+   * DATA
+   * ============================================================
+   */
   date: {
-    marginTop: 3,
+    marginTop: 2,
 
-    fontSize: 13,
+    fontSize: 11,
+
+    lineHeight: 15,
+
+    fontWeight: '400',
+
+    includeFontPadding:
+      false,
+
+    marginBottom: 0,
+
+    padding: 0,
+
+    color:
+      'rgba(245, 245, 245, 0.65)',
   },
 
 
-  // IMAGEM
+  /*
+   * ============================================================
+   * IMAGEM
+   * ============================================================
+   */
   image: {
-    width: width,
+    width: '100%',
 
-    height: 340,
+    height: 300,
 
-    resizeMode: 'cover',
+    alignSelf:
+      'center',
+
+    borderRadius: 8,
+
+    resizeMode:
+      'cover',
+
+    overflow:
+      'hidden',
+
+    backgroundColor:
+      '#05618D',
   },
 
 
-  // TEXTO
+  /*
+   * ============================================================
+   * CONTEÚDO
+   * ============================================================
+   */
   content: {
-    padding: 16,
+    width: '100%',
+
+    paddingHorizontal:
+      16,
+
+    paddingTop:
+      10,
+
+    paddingBottom:
+      10,
+
+    backgroundColor:
+      'transparent',
   },
 
+
+  /*
+   * ============================================================
+   * DESCRIÇÃO
+   * ============================================================
+   */
   description: {
-    fontSize: 16,
+    fontSize: 14,
 
-    lineHeight: 25,
+    lineHeight: 20,
+
+    fontWeight: '400',
+
+    includeFontPadding:
+      false,
+
+    textAlign:
+      'left',
+
+    margin: 0,
+
+    padding: 0,
+
+    color:
+      '#F5F5F5',
   },
 
 
-  // BOTÃO CHAT
+  /*
+   * ============================================================
+   * BOTÃO DE MENSAGEM
+   * ============================================================
+   */
   chatButton: {
-    height: 56,
+    minWidth: 0,
 
-    marginHorizontal: 16,
+    height: 44,
 
-    marginBottom: 30,
+    marginHorizontal:
+      16,
 
-    borderRadius: 14,
+    marginTop: 4,
 
-    flexDirection: 'row',
+    marginBottom: 22,
 
-    justifyContent: 'center',
+    borderRadius: 10,
 
-    alignItems: 'center',
+    flexDirection:
+      'row',
+
+    justifyContent:
+      'center',
+
+    alignItems:
+      'center',
+
+    paddingHorizontal:
+      18,
+
+    overflow:
+      'hidden',
+
+    backgroundColor:
+      '#3AC2F8',
   },
 
+
+  /*
+   * ============================================================
+   * TEXTO DO BOTÃO
+   * ============================================================
+   */
   chatButtonText: {
-    color: '#ffffff',
+    color:
+      '#141414',
 
-    fontSize: 16,
+    fontSize: 15,
 
-    fontWeight: '700',
+    lineHeight: 19,
 
-    marginLeft: 8,
+    fontWeight: '600',
+
+    includeFontPadding:
+      false,
+
+    textAlign:
+      'center',
+
+    marginLeft: 7,
+
+    padding: 0,
   },
 
 });

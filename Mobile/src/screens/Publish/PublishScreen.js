@@ -24,10 +24,6 @@ import Header from '../../components/Header';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
-import {
-  useTheme,
-} from '../../hooks/useTheme';
-
 import api from '../../services/api';
 
 import styles from './styles';
@@ -173,8 +169,19 @@ function createImageFile(
 }
 
 export default function PublishScreen() {
-  const { theme } =
-    useTheme();
+  /*
+   * Mantemos a tela de Publicar no mesmo
+   * visual escuro definido para o restante
+   * do aplicativo.
+   */
+  const theme = {
+    background: '#141414',
+    text: '#F5F5F5',
+    textSecondary: '#AEB8BD',
+    primary: '#3AC2F8',
+    card: '#141414',
+    border: 'rgba(245, 245, 245, 0.28)',
+  };
 
   const [
     images,
@@ -202,8 +209,7 @@ export default function PublishScreen() {
   async function handlePickImages() {
     try {
       const permission =
-        await ImagePicker
-          .requestMediaLibraryPermissionsAsync();
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permission.granted) {
         Alert.alert(
@@ -215,19 +221,16 @@ export default function PublishScreen() {
       }
 
       const result =
-        await ImagePicker
-          .launchImageLibraryAsync({
-            mediaTypes:
-              ImagePicker
-                .MediaTypeOptions
-                .Images,
+        await ImagePicker.launchImageLibraryAsync({
+          mediaTypes:
+            ImagePicker.MediaTypeOptions.Images,
 
-            allowsMultipleSelection:
-              true,
+          allowsMultipleSelection:
+            true,
 
-            quality:
-              0.7,
-          });
+          quality:
+            0.7,
+        });
 
       if (result.canceled) {
         return;

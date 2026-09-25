@@ -21,10 +21,6 @@ import {
 import Header from '../../components/Header';
 
 import {
-  useTheme,
-} from '../../hooks/useTheme';
-
-import {
   resolveImageUrl,
 } from '../../utils/imageHelper';
 
@@ -35,18 +31,38 @@ import imageUserDark from '../../../assets/imageuserdark.png';
 
 import styles from './styles';
 
+
 /*
- * Componente separado para cada contato.
+ * ============================================================
+ * TEMA VISUAL
+ * ============================================================
  *
- * Isso permite que cada avatar tenha seu próprio
- * controle de erro. Se a imagem de um contato
- * falhar, somente aquele contato utiliza o
- * avatar padrão.
+ * A área de mensagens segue o mesmo tema escuro
+ * utilizado nas outras telas que já ajustamos.
+ *
+ * A lógica da aplicação continua independente
+ * dessas cores.
+ */
+const theme = {
+  background: '#141414',
+  card: '#141414',
+  text: '#F5F5F5',
+  textSecondary: '#AEB8BD',
+  primary: '#3AC2F8',
+  border: 'rgba(245, 245, 245, 0.18)',
+};
+
+
+/*
+ * ============================================================
+ * ITEM INDIVIDUAL DA LISTA
+ * ============================================================
+ *
+ * Cada conversa possui seu próprio estado para
+ * tratamento de erro do avatar remoto.
  */
 function ContactItem({
   item,
-  theme,
-  darkMode,
   onPress,
   formatTime,
 }) {
@@ -55,30 +71,30 @@ function ContactItem({
     setRemoteAvatarFailed,
   ] = useState(false);
 
-  /*
-   * REGRA DO AVATAR PADRÃO:
-   *
-   * Modo claro:
-   * imageuserdark.png
-   *
-   * Modo escuro:
-   * imageuserlight.png
-   */
-  const defaultAvatarSource = useMemo(() => {
-    return darkMode
-      ? imageUserLight
-      : imageUserDark;
-  }, [darkMode]);
 
   /*
-   * Resolve a foto remota do contato.
+   * ==========================================================
+   * AVATAR PADRÃO
+   * ==========================================================
    *
-   * Se a propriedade photo estiver vazia,
-   * inválida ou ausente, retorna null.
+   * Quando o avatar remoto não existe ou não pode
+   * ser carregado, usamos o PNG correspondente
+   * ao padrão visual escuro do aplicativo.
+   */
+  const defaultAvatarSource = useMemo(() => {
+    return imageUserLight;
+  }, []);
+
+
+  /*
+   * ==========================================================
+   * FOTO REMOTA
+   * ==========================================================
+   *
+   * Resolve a URL da foto cadastrada para o usuário.
    */
   const remoteAvatarUrl = useMemo(() => {
-    const photo =
-      item?.user?.photo;
+    const photo = item?.user?.photo;
 
     if (
       !photo ||
@@ -91,18 +107,31 @@ function ContactItem({
     return resolveImageUrl(photo);
   }, [item?.user?.photo]);
 
+
   /*
-   * Quando a foto do contato mudar,
-   * permite uma nova tentativa de carregamento.
+   * Sempre que a URL mudar, permitimos uma nova
+   * tentativa de carregamento da imagem.
    */
   useEffect(() => {
     setRemoteAvatarFailed(false);
   }, [remoteAvatarUrl]);
 
+
+  /*
+   * Define se devemos exibir a foto real.
+   */
   const hasRemoteAvatar =
     Boolean(remoteAvatarUrl) &&
     !remoteAvatarFailed;
 
+
+  /*
+   * ==========================================================
+   * ERRO AO CARREGAR FOTO
+   * ==========================================================
+   *
+   * O erro afeta somente o contato atual.
+   */
   function handleRemoteAvatarError(event) {
     console.log(
       'ERRO AO CARREGAR FOTO DO CONTATO:',
@@ -124,38 +153,33 @@ function ContactItem({
       }
     );
 
-    /*
-     * Se a foto remota falhar, este contato
-     * passa a exibir imediatamente:
-     *
-     * imageuserdark no modo claro;
-     * imageuserlight no modo escuro.
-     */
     setRemoteAvatarFailed(true);
   }
 
+
+  /*
+   * Quantidade de mensagens não lidas.
+   */
+  const unreadCount =
+    Number(item?.unreadCount) || 0;
+
+
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={() => onPress(item)}
-      style={[
-        styles.contactItem,
-        {
-          backgroundColor:
-            theme.card,
-
-          borderColor:
-            theme.border ||
-            'transparent',
-        },
-      ]}
+      activeOpacity={0.75}
+      onPress={() =>
+        onPress(item)
+      }
+      style={styles.contactItem}
     >
+
+      {/* ====================================================
+       * AVATAR
+       * ================================================== */}
+
       {hasRemoteAvatar ? (
         /*
-         * FOTO REAL DO CONTATO
-         *
-         * A fotografia ocupa normalmente
-         * toda a área circular de 58 × 58.
+         * FOTO REAL
          */
         <View
           style={
@@ -178,13 +202,6 @@ function ContactItem({
       ) : (
         /*
          * AVATAR PADRÃO
-         *
-         * O contêiner é transparente e não
-         * adiciona fundo branco ou borda.
-         *
-         * A imagem é ampliada porque os PNGs
-         * possuem uma grande área transparente
-         * ao redor do desenho central.
          */
         <View
           style={
@@ -203,19 +220,40 @@ function ContactItem({
         </View>
       )}
 
-      <View style={styles.contactInfo}>
+
+      {/* ====================================================
+       * NOME + ÚLTIMA MENSAGEM
+       * ================================================== */}
+
+      <View
+        style={
+          styles.contactInfo
+        }
+      >
+
         <Text
           numberOfLines={1}
           style={[
             styles.name,
             {
-              color: theme.text,
+              color:
+                theme.text,
+
+              /*
+               * Conversas com mensagens não lidas
+               * recebem um pequeno destaque no nome.
+               */
+              fontWeight:
+                unreadCount > 0
+                  ? '800'
+                  : '600',
             },
           ]}
         >
           {item?.user?.name ||
             'Usuário'}
         </Text>
+
 
         <Text
           numberOfLines={1}
@@ -224,21 +262,44 @@ function ContactItem({
             {
               color:
                 theme.textSecondary,
+
+              /*
+               * Mantém a última mensagem levemente
+               * mais destacada quando existem mensagens
+               * não lidas.
+               */
+              fontWeight:
+                unreadCount > 0
+                  ? '500'
+                  : '400',
             },
           ]}
         >
           {item?.lastMessage ||
             'Nenhuma mensagem'}
         </Text>
+
       </View>
 
-      <View style={styles.rightContent}>
+
+      {/* ====================================================
+       * HORÁRIO + BADGE
+       * ================================================== */}
+
+      <View
+        style={
+          styles.rightContent
+        }
+      >
+
         <Text
           style={[
             styles.time,
             {
               color:
-                theme.textSecondary,
+                unreadCount > 0
+                  ? theme.primary
+                  : theme.textSecondary,
             },
           ]}
         >
@@ -247,7 +308,8 @@ function ContactItem({
           )}
         </Text>
 
-        {Number(item?.unreadCount) > 0 ? (
+
+        {unreadCount > 0 ? (
           <View
             style={[
               styles.badge,
@@ -257,39 +319,60 @@ function ContactItem({
               },
             ]}
           >
-            <Text style={styles.badgeText}>
-              {Number(item.unreadCount) > 99
+            <Text
+              style={
+                styles.badgeText
+              }
+            >
+              {unreadCount > 99
                 ? '99+'
-                : item.unreadCount}
+                : unreadCount}
             </Text>
           </View>
         ) : null}
+
       </View>
+
     </TouchableOpacity>
   );
 }
 
+
+/*
+ * ============================================================
+ * TELA DE CONTATOS / MENSAGENS
+ * ============================================================
+ */
 export default function ContactsScreen() {
   const navigation =
     useNavigation();
 
-  const {
-    theme,
-    darkMode,
-  } = useTheme();
 
+  /*
+   * Lista das conversas.
+   */
   const [
     contacts,
     setContacts,
   ] = useState([]);
 
+
+  /*
+   * Estado de atualização da lista.
+   */
   const [
     loading,
     setLoading,
   ] = useState(false);
 
+
   /*
+   * ==========================================================
    * BUSCAR CONVERSAS
+   * ==========================================================
+   *
+   * Mantemos exatamente a mesma chamada
+   * utilizada anteriormente.
    */
   const loadContacts =
     useCallback(async () => {
@@ -300,7 +383,9 @@ export default function ContactsScreen() {
           await api.get('/chat');
 
         const receivedContacts =
-          Array.isArray(response.data)
+          Array.isArray(
+            response.data
+          )
             ? response.data
             : [];
 
@@ -320,9 +405,11 @@ export default function ContactsScreen() {
       }
     }, []);
 
+
   /*
-   * ATUALIZA A LISTA SEMPRE QUE
-   * A TELA DE CONTATOS RECEBE FOCO.
+   * ==========================================================
+   * ATUALIZAR AO VOLTAR PARA A TELA
+   * ==========================================================
    */
   useFocusEffect(
     useCallback(() => {
@@ -330,8 +417,13 @@ export default function ContactsScreen() {
     }, [loadContacts])
   );
 
+
   /*
+   * ==========================================================
    * ABRIR CHAT
+   * ==========================================================
+   *
+   * A navegação continua exatamente igual.
    */
   function openChat(contact) {
     navigation.navigate(
@@ -346,8 +438,11 @@ export default function ContactsScreen() {
     );
   }
 
+
   /*
-   * FORMATAR HORÁRIO DA ÚLTIMA MENSAGEM
+   * ==========================================================
+   * FORMATAR HORÁRIO
+   * ==========================================================
    */
   function formatTime(date) {
     if (!date) {
@@ -375,21 +470,30 @@ export default function ContactsScreen() {
       );
   }
 
+
   /*
-   * RENDERIZAR CONTATO
+   * ==========================================================
+   * RENDERIZAR ITEM
+   * ==========================================================
    */
   function renderItem({ item }) {
     return (
       <ContactItem
         item={item}
-        theme={theme}
-        darkMode={darkMode}
         onPress={openChat}
-        formatTime={formatTime}
+        formatTime={
+          formatTime
+        }
       />
     );
   }
 
+
+  /*
+   * ==========================================================
+   * RENDER DA TELA
+   * ==========================================================
+   */
   return (
     <View
       style={[
@@ -400,18 +504,38 @@ export default function ContactsScreen() {
         },
       ]}
     >
-      <Header title="Contatos" />
+
+      {/* ====================================================
+       * CABEÇALHO
+       * ================================================== */}
+
+      <Header
+        title="Contatos"
+      />
+
+
+      {/* ====================================================
+       * LISTA DE CONVERSAS
+       * ================================================== */}
 
       <FlatList
         data={contacts}
-        keyExtractor={(item, index) =>
+
+        keyExtractor={(
+          item,
+          index
+        ) =>
           String(
             item?.id ??
               item?.user?.id ??
               index
           )
         }
-        renderItem={renderItem}
+
+        renderItem={
+          renderItem
+        }
+
         contentContainerStyle={[
           styles.list,
 
@@ -419,9 +543,19 @@ export default function ContactsScreen() {
             ? styles.emptyList
             : null,
         ]}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={loadContacts}
+
+        showsVerticalScrollIndicator={
+          false
+        }
+
+        refreshing={
+          loading
+        }
+
+        onRefresh={
+          loadContacts
+        }
+
         ListEmptyComponent={
           !loading ? (
             <View
@@ -429,33 +563,28 @@ export default function ContactsScreen() {
                 styles.emptyContainer
               }
             >
+
               <Text
-                style={[
-                  styles.emptyTitle,
-                  {
-                    color:
-                      theme.text,
-                  },
-                ]}
+                style={
+                  styles.emptyTitle
+                }
               >
                 Nenhuma conversa
               </Text>
 
               <Text
-                style={[
-                  styles.emptyText,
-                  {
-                    color:
-                      theme.textSecondary,
-                  },
-                ]}
+                style={
+                  styles.emptyText
+                }
               >
                 Suas conversas aparecerão aqui.
               </Text>
+
             </View>
           ) : null
         }
       />
+
     </View>
   );
 }

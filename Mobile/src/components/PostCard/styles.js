@@ -2,178 +2,374 @@ import {
   StyleSheet,
 } from 'react-native';
 
+
 export default StyleSheet.create({
+
   /*
-   * CARTÃO DA PUBLICAÇÃO
+   * ============================================================
+   * PUBLICAÇÃO
+   * ============================================================
    */
+
   container: {
-    width: '100%',
+    width:
+      '100%',
 
-    borderRadius: 18,
+    marginBottom:
+      0,
 
-    marginBottom: 18,
+    borderRadius:
+      0,
 
-    overflow: 'hidden',
+    overflow:
+      'hidden',
 
-    shadowColor: '#000000',
+    backgroundColor:
+      '#141414',
+
+    shadowColor:
+      'transparent',
 
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 0,
     },
 
-    shadowOpacity: 0.1,
+    shadowOpacity:
+      0,
 
-    shadowRadius: 5,
+    shadowRadius:
+      0,
 
-    elevation: 4,
+    elevation:
+      0,
+
+    borderBottomWidth:
+      1,
+
+    borderBottomColor:
+      'rgba(245, 245, 245, 0.22)',
   },
+
 
   /*
+   * ============================================================
    * CABEÇALHO
-   *
-   * Contém:
-   * - avatar;
-   * - nome;
-   * - data;
-   * - indicador de promoção.
+   * ============================================================
    */
+
   header: {
-    width: '100%',
+    width:
+      '100%',
 
-    paddingHorizontal: 14,
+    paddingHorizontal:
+      16,
 
-    paddingVertical: 14,
+    paddingVertical:
+      12,
+
+    backgroundColor:
+      'transparent',
   },
+
+
+  /*
+   * ============================================================
+   * INFORMAÇÕES DO USUÁRIO
+   * ============================================================
+   */
 
   userInfo: {
-    width: '100%',
+    width:
+      '100%',
 
-    flexDirection: 'row',
+    flexDirection:
+      'row',
 
-    alignItems: 'center',
+    alignItems:
+      'center',
+
+    justifyContent:
+      'flex-start',
+
+    minWidth:
+      0,
   },
+
 
   /*
-   * Mantido para compatibilidade caso
-   * outro componente ainda use styles.avatar.
+   * ============================================================
+   * NOME
+   * ============================================================
    *
-   * O PostCard atualizado utiliza os estilos
-   * específicos para foto real e avatar padrão.
+   * Aumentado um pouco em relação ao anterior.
    */
-  avatar: {
-    width: 48,
-
-    height: 48,
-
-    borderRadius: 24,
-
-    marginRight: 12,
-  },
 
   username: {
-    fontSize: 16,
+    fontSize:
+      16,
 
-    fontWeight: '700',
+    lineHeight:
+      21,
+
+    fontWeight:
+      '600',
+
+    color:
+      '#F5F5F5',
+
+    includeFontPadding:
+      false,
+
+    margin:
+      0,
+
+    padding:
+      0,
+
+    flexShrink:
+      1,
   },
+
+
+  /*
+   * ============================================================
+   * DATA
+   * ============================================================
+   *
+   * Agora fica na área inferior, ao lado das ações.
+   *
+   * O texto da publicação usa 15px, então a data fica
+   * somente um pouco menor: 13px.
+   */
 
   date: {
-    marginTop: 2,
+    flexShrink:
+      0,
 
-    fontSize: 13,
+    marginLeft:
+      12,
+
+    fontSize:
+      13,
+
+    lineHeight:
+      18,
+
+    fontWeight:
+      '400',
+
+    color:
+      'rgba(245, 245, 245, 0.68)',
+
+    includeFontPadding:
+      false,
+
+    textAlign:
+      'right',
+
+    marginTop:
+      0,
+
+    marginBottom:
+      0,
+
+    padding:
+      0,
   },
 
+
   /*
-   * IMAGEM DO CARROSSEL
+   * ============================================================
+   * IMAGEM
+   * ============================================================
    *
-   * A largura será definida dinamicamente
-   * no PostCard para ficar exatamente igual
-   * à largura interna do cartão.
+   * NÃO existe mais uma altura fixa.
    *
-   * A altura precisa ser fixa para que todas
-   * as imagens mantenham o mesmo espaço
-   * durante o movimento horizontal.
+   * A altura é calculada pela proporção real de cada imagem
+   * no PostCard/index.js.
    */
+
   postImage: {
-    width: '100%',
+    width:
+      '100%',
 
-    height: 320,
+    height:
+      '100%',
 
-    backgroundColor: '#e5e7eb',
+    borderRadius:
+      0,
+
+    backgroundColor:
+      '#141414',
+
+    resizeMode:
+      'contain',
+
+    overflow:
+      'hidden',
   },
+
 
   /*
-   * CONTEÚDO TEXTUAL
-   *
-   * Agora mostra apenas:
-   *
-   * post.summary
-   *
-   * ou, em posts antigos:
-   *
-   * post.description
+   * ============================================================
+   * CONTEÚDO / RESUMO
+   * ============================================================
    */
+
   content: {
-    width: '100%',
+    width:
+      '100%',
 
-    paddingHorizontal: 14,
+    paddingHorizontal:
+      16,
 
-    paddingTop: 12,
+    paddingTop:
+      13,
 
-    paddingBottom: 14,
+    paddingBottom:
+      13,
+
+    backgroundColor:
+      '#141414',
   },
+
+
+  /*
+   * ============================================================
+   * TEXTO DA PUBLICAÇÃO
+   * ============================================================
+   */
 
   description: {
-    fontSize: 15,
+    fontSize:
+      15,
 
-    lineHeight: 22,
+    lineHeight:
+      22,
+
+    fontWeight:
+      '400',
+
+    color:
+      '#F5F5F5',
+
+    includeFontPadding:
+      false,
+
+    textAlign:
+      'left',
+
+    margin:
+      0,
+
+    padding:
+      0,
   },
+
 
   /*
+   * ============================================================
    * AÇÕES
+   * ============================================================
    *
-   * A cor da borda superior é definida
-   * dinamicamente com theme.border.
+   * A linha superior foi removida.
+   *
+   * A data fica do lado direito.
    */
+
   actions: {
-    width: '100%',
+    width:
+      '100%',
 
-    minHeight: 58,
+    minHeight:
+      52,
 
-    flexDirection: 'row',
+    height:
+      52,
 
-    alignItems: 'center',
+    flexDirection:
+      'row',
 
-    justifyContent: 'space-around',
+    alignItems:
+      'center',
 
-    paddingHorizontal: 10,
+    justifyContent:
+      'space-between',
 
-    paddingVertical: 10,
+    paddingHorizontal:
+      16,
 
-    borderTopWidth: 1,
+    paddingVertical:
+      5,
+
+    borderTopWidth:
+      0,
+
+    borderTopColor:
+      'transparent',
+
+    backgroundColor:
+      '#141414',
   },
+
+
+  /*
+   * ============================================================
+   * BOTÃO DE AÇÃO
+   * ============================================================
+   */
 
   actionButton: {
-    flex: 1,
+    width:
+      44,
 
-    minHeight: 40,
+    height:
+      42,
 
-    flexDirection: 'row',
+    alignItems:
+      'center',
 
-    alignItems: 'center',
+    justifyContent:
+      'center',
 
-    justifyContent: 'center',
+    padding:
+      0,
 
-    paddingHorizontal: 8,
+    margin:
+      0,
 
-    borderRadius: 10,
+    borderRadius:
+      8,
+
+    backgroundColor:
+      'transparent',
+
+    overflow:
+      'visible',
   },
+
+
+  /*
+   * ============================================================
+   * TEXTO DAS AÇÕES
+   * ============================================================
+   *
+   * Mantido apenas para compatibilidade.
+   */
 
   actionText: {
-    marginLeft: 6,
+    display:
+      'none',
 
-    fontSize: 14,
+    marginLeft:
+      0,
 
-    fontWeight: '600',
+    fontSize:
+      0,
+
+    fontWeight:
+      '400',
   },
+
 });

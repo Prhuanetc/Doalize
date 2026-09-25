@@ -36,103 +36,192 @@ import {
 import imageUserLight from '../../../assets/imageuserlight.png';
 import imageUserDark from '../../../assets/imageuserdark.png';
 
+
+/*
+ * ============================================================
+ * CORES
+ * ============================================================
+ */
+
+const COLORS = {
+  background: '#141414',
+
+  text: '#F5F5F5',
+
+  textSecondary:
+    'rgba(245, 245, 245, 0.65)',
+
+  primary: '#3AC2F8',
+
+  deepBlue: '#155269',
+
+  divider:
+    'rgba(245, 245, 245, 0.22)',
+
+  white: '#FFFFFF',
+};
+
+
+/*
+ * ============================================================
+ * POST CARD
+ * ============================================================
+ */
+
 export default function PostCard({
   post,
   onPress,
   onShare,
   onPromote,
 }) {
+
   const {
-    theme,
     darkMode,
   } = useTheme();
 
+
+  /*
+   * ==========================================================
+   * REFERÊNCIAS
+   * ==========================================================
+   */
+
   const carouselRef =
     useRef(null);
+
+
+  /*
+   * ==========================================================
+   * ESTADOS
+   * ==========================================================
+   */
 
   const [
     imageWidth,
     setImageWidth,
   ] = useState(0);
 
+
   const [
     activeImageIndex,
     setActiveImageIndex,
   ] = useState(0);
+
 
   const [
     failedPostImages,
     setFailedPostImages,
   ] = useState({});
 
+
   const [
     remoteAvatarFailed,
     setRemoteAvatarFailed,
   ] = useState(false);
 
+
   /*
-   * QUANTIDADE DE PESSOAS
-   * QUE PROMOVERAM
+   * Guarda a proporção real de cada imagem.
+   *
+   * Exemplo:
+   *
+   * imagem 1200x800
+   * ratio = 1200 / 800
+   *
+   * Assim a altura deixa de ser fixa e a imagem
+   * passa a ocupar seu tamanho proporcional real.
    */
+  const [
+    imageRatios,
+    setImageRatios,
+  ] = useState({});
+
+
+  /*
+   * ==========================================================
+   * PROMOÇÕES
+   * ==========================================================
+   */
+
   const promotionCount =
     Math.max(
       0,
       Number(
         post
           ?.promotion_count ||
-          0
+        0
       )
     );
 
-  /*
-   * INFORMA SE O USUÁRIO
-   * LOGADO PROMOVEU O POST
-   */
+
   const promotedByMe =
     Boolean(
-      post?.promoted_by_me
+      post
+        ?.promoted_by_me
     );
 
-  /*
-   * TEXTO DO CONTADOR
-   */
+
   const promotionCountText =
     promotionCount === 1
       ? '1 promoção'
       : `${promotionCount} promoções`;
 
+
   /*
+   * ==========================================================
    * AVATAR PADRÃO
+   * ==========================================================
    */
+
   const defaultAvatarSource =
     useMemo(() => {
+
       return darkMode
         ? imageUserLight
         : imageUserDark;
-    }, [darkMode]);
+
+    }, [
+      darkMode,
+    ]);
+
 
   /*
-   * IMAGENS DO POST
+   * ==========================================================
+   * IMAGENS
+   * ==========================================================
    */
+
   const postImages =
     useMemo(() => {
+
       return parsePostImages(
         post?.images
       );
-    }, [post?.images]);
+
+    }, [
+      post?.images,
+    ]);
+
 
   /*
-   * RESUMO DO FEED
+   * ==========================================================
+   * RESUMO
+   * ==========================================================
    */
+
   const feedSummary =
     useMemo(() => {
+
       if (
         typeof post?.summary ===
           'string' &&
         post.summary.trim()
       ) {
+
         return post.summary.trim();
+
       }
+
 
       if (
         typeof post
@@ -140,24 +229,34 @@ export default function PostCard({
           'string' &&
         post.description.trim()
       ) {
+
         return post
           .description
           .trim();
+
       }
 
+
       return '';
+
     }, [
       post?.summary,
       post?.description,
     ]);
 
+
   /*
+   * ==========================================================
    * FOTO REAL DO USUÁRIO
+   * ==========================================================
    */
+
   const remoteAvatarUrl =
     useMemo(() => {
+
       const photo =
         post?.user?.photo;
+
 
       if (
         !photo ||
@@ -165,90 +264,247 @@ export default function PostCard({
           'string' ||
         !photo.trim()
       ) {
+
         return null;
+
       }
+
 
       return resolveImageUrl(
         photo
       );
-    }, [post?.user?.photo]);
+
+    }, [
+      post?.user?.photo,
+    ]);
+
+
+  /*
+   * ==========================================================
+   * RESETAR AVATAR
+   * ==========================================================
+   */
 
   useEffect(() => {
+
     setRemoteAvatarFailed(
       false
     );
-  }, [remoteAvatarUrl]);
+
+  }, [
+    remoteAvatarUrl,
+  ]);
+
+
+  /*
+   * ==========================================================
+   * DESCOBRIR PROPORÇÃO REAL DAS IMAGENS
+   * ==========================================================
+   *
+   * Isso elimina a altura fixa que estava cortando as fotos.
+   */
 
   useEffect(() => {
-    setActiveImageIndex(0);
 
-    setFailedPostImages({});
+    setImageRatios({});
+
+
+    postImages.forEach(
+      (
+        image,
+        index
+      ) => {
+
+        const imageUrl =
+          resolveImageUrl(
+            image
+          );
+
+
+        if (!imageUrl) {
+          return;
+        }
+
+
+        Image.getSize(
+          imageUrl,
+
+          (
+            width,
+            height
+          ) => {
+
+            if (
+              width > 0 &&
+              height > 0
+            ) {
+
+              setImageRatios(
+                current => ({
+
+                  ...current,
+
+                  [index]:
+                    width / height,
+
+                })
+              );
+
+            }
+
+          },
+
+          error => {
+
+            console.log(
+              'ERRO AO OBTER DIMENSÕES DA IMAGEM:',
+              {
+                image:
+                  imageUrl,
+
+                index,
+
+                message:
+                  error?.message,
+              }
+            );
+
+          }
+
+        );
+
+      }
+
+    );
+
+  }, [
+    postImages,
+  ]);
+
+
+  /*
+   * ==========================================================
+   * RESETAR CARROSSEL
+   * ==========================================================
+   */
+
+  useEffect(() => {
+
+    setActiveImageIndex(
+      0
+    );
+
+    setFailedPostImages(
+      {}
+    );
+
 
     if (
       carouselRef.current &&
       postImages.length > 0
     ) {
+
       try {
+
         carouselRef.current
           .scrollToOffset({
             offset: 0,
             animated: false,
           });
+
       } catch (error) {
+
         console.log(
           'ERRO AO REINICIAR CARROSSEL:',
           error.message
         );
+
       }
+
     }
+
   }, [
     post?.id,
     postImages.length,
   ]);
 
+
+  /*
+   * ==========================================================
+   * AVATAR
+   * ==========================================================
+   */
+
   const hasRemoteAvatar =
-    Boolean(remoteAvatarUrl) &&
+    Boolean(
+      remoteAvatarUrl
+    ) &&
     !remoteAvatarFailed;
+
+
+  /*
+   * ==========================================================
+   * LARGURA DO CARROSSEL
+   * ==========================================================
+   */
 
   function handleCarouselLayout(
     event
   ) {
+
     const measuredWidth =
       event.nativeEvent
         ?.layout
         ?.width;
+
 
     if (
       measuredWidth &&
       measuredWidth !==
         imageWidth
     ) {
+
       setImageWidth(
         measuredWidth
       );
+
     }
+
   }
+
+
+  /*
+   * ==========================================================
+   * FINAL DO CARROSSEL
+   * ==========================================================
+   */
 
   function handleImageScrollEnd(
     event
   ) {
+
     if (
       !imageWidth ||
       postImages.length <= 1
     ) {
+
       return;
+
     }
+
 
     const offsetX =
       event.nativeEvent
         ?.contentOffset
         ?.x || 0;
 
+
     const calculatedIndex =
       Math.round(
         offsetX /
         imageWidth
       );
+
 
     const safeIndex =
       Math.max(
@@ -259,14 +515,24 @@ export default function PostCard({
         )
       );
 
+
     setActiveImageIndex(
       safeIndex
     );
+
   }
+
+
+  /*
+   * ==========================================================
+   * ERRO AVATAR
+   * ==========================================================
+   */
 
   function handleRemoteAvatarError(
     event
   ) {
+
     console.log(
       'ERRO AO CARREGAR AVATAR:',
       {
@@ -281,16 +547,26 @@ export default function PostCard({
       }
     );
 
+
     setRemoteAvatarFailed(
       true
     );
+
   }
+
+
+  /*
+   * ==========================================================
+   * ERRO IMAGEM
+   * ==========================================================
+   */
 
   function handlePostImageError(
     image,
     index,
     event
   ) {
+
     console.log(
       'ERRO AO CARREGAR IMAGEM:',
       {
@@ -306,65 +582,121 @@ export default function PostCard({
       }
     );
 
+
     setFailedPostImages(
-      (currentErrors) => {
-        const updatedErrors = {
-          ...currentErrors,
-        };
+      currentErrors => ({
 
-        updatedErrors[index] =
-          true;
+        ...currentErrors,
 
-        return updatedErrors;
-      }
+        [index]:
+          true,
+
+      })
     );
+
   }
+
+
+  /*
+   * ==========================================================
+   * ABRIR PUBLICAÇÃO
+   * ==========================================================
+   */
 
   function handleOpenPost() {
+
     if (onPress) {
-      onPress(post);
+
+      onPress(
+        post
+      );
+
     }
+
   }
+
+
+  /*
+   * ==========================================================
+   * COMPARTILHAR
+   * ==========================================================
+   */
 
   function handleSharePress(
     event
   ) {
+
     if (
       event?.stopPropagation
     ) {
+
       event.stopPropagation();
+
     }
 
+
     if (onShare) {
-      onShare(post);
+
+      onShare(
+        post
+      );
+
     }
+
   }
+
+
+  /*
+   * ==========================================================
+   * PROMOVER
+   * ==========================================================
+   */
 
   function handlePromotePress(
     event
   ) {
+
     if (
       event?.stopPropagation
     ) {
+
       event.stopPropagation();
+
     }
 
+
     if (onPromote) {
-      onPromote(post);
+
+      onPromote(
+        post
+      );
+
     }
+
   }
+
+
+  /*
+   * ==========================================================
+   * RENDERIZAR IMAGEM
+   * ==========================================================
+   */
 
   function renderPostImage({
     item,
     index,
   }) {
+
     const imageFailed =
       failedPostImages[
         index
       ] === true;
 
+
     if (imageFailed) {
+
       return (
+
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={
@@ -377,466 +709,606 @@ export default function PostCard({
               width:
                 imageWidth ||
                 '100%',
-
-              backgroundColor:
-                theme.background,
             },
           ]}
         >
+
           <Ionicons
             name="image-outline"
             size={46}
             color={
-              theme.textSecondary
+              COLORS.textSecondary
             }
           />
 
+
           <Text
-            style={[
-              localStyles.unavailableText,
-              {
-                color:
-                  theme
-                    .textSecondary,
-              },
-            ]}
+            style={
+              localStyles.unavailableText
+            }
           >
             Imagem indisponível
           </Text>
+
         </TouchableOpacity>
+
       );
+
     }
 
+
+    const ratio =
+      imageRatios[index];
+
+
     return (
+
       <TouchableOpacity
         activeOpacity={0.95}
         onPress={
           handleOpenPost
         }
-        style={{
-          width:
-            imageWidth ||
-            '100%',
-        }}
+        style={[
+          localStyles.imageWrapper,
+          {
+            width:
+              imageWidth ||
+              '100%',
+
+            ...(ratio
+              ? {
+                  aspectRatio:
+                    ratio,
+                }
+              : {
+                  minHeight:
+                    180,
+                }),
+          },
+        ]}
       >
+
         <Image
           source={{
-            uri: item,
+            uri:
+              item,
           }}
           style={[
             styles.postImage,
             {
               width:
-                imageWidth ||
+                '100%',
+
+              height:
                 '100%',
             },
           ]}
-          resizeMode="cover"
+          resizeMode="contain"
           onError={(event) => {
+
             handlePostImageError(
               item,
               index,
               event
             );
+
           }}
         />
+
       </TouchableOpacity>
+
     );
+
   }
 
+
+  /*
+   * ============================================================
+   * RENDER
+   * ============================================================
+   */
+
   return (
+
     <View
-      style={[
-        styles.container,
-        {
-          backgroundColor:
-            theme.card,
-        },
-      ]}
+      style={
+        styles.container
+      }
     >
-      {/* CABEÇALHO */}
+
+      {/* ======================================================
+          CABEÇALHO
+          ====================================================== */}
+
       <TouchableOpacity
         activeOpacity={0.88}
         onPress={
           handleOpenPost
         }
-        style={styles.header}
+        style={
+          styles.header
+        }
       >
+
         <View
-          style={styles.userInfo}
+          style={
+            styles.userInfo
+          }
         >
-          {hasRemoteAvatar ? (
-            <View
-              style={
-                localStyles.remoteAvatarContainer
-              }
-            >
-              <Image
-                source={{
-                  uri:
-                    remoteAvatarUrl,
-                }}
+
+          {/* AVATAR */}
+
+          {
+            hasRemoteAvatar ? (
+
+              <View
                 style={
-                  localStyles.remoteAvatar
+                  localStyles.remoteAvatarContainer
                 }
-                resizeMode="cover"
-                onError={
-                  handleRemoteAvatarError
-                }
-              />
-            </View>
-          ) : (
-            <View
-              style={
-                localStyles.defaultAvatarContainer
-              }
-            >
-              <Image
-                source={
-                  defaultAvatarSource
-                }
+              >
+
+                <Image
+                  source={{
+                    uri:
+                      remoteAvatarUrl,
+                  }}
+                  style={
+                    localStyles.remoteAvatar
+                  }
+                  resizeMode="cover"
+                  onError={
+                    handleRemoteAvatarError
+                  }
+                />
+
+              </View>
+
+            ) : (
+
+              <View
                 style={
-                  localStyles.defaultAvatar
+                  localStyles.defaultAvatarContainer
                 }
-                resizeMode="contain"
-              />
-            </View>
-          )}
+              >
+
+                <Image
+                  source={
+                    defaultAvatarSource
+                  }
+                  style={
+                    localStyles.defaultAvatar
+                  }
+                  resizeMode="contain"
+                />
+
+              </View>
+
+            )
+          }
+
+
+          {/* NOME */}
 
           <View
             style={
               localStyles.userTextContainer
             }
           >
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.username,
-                {
-                  color:
-                    theme.text,
-                },
-              ]}
-            >
-              {post?.user?.name ||
-                'Usuário'}
-            </Text>
 
             <Text
               numberOfLines={1}
-              style={[
-                styles.date,
-                {
-                  color:
-                    theme
-                      .textSecondary,
-                },
-              ]}
+              style={
+                styles.username
+              }
             >
-              {formatDate(
-                post?.created_at ||
-                  post?.createdAt
-              )}
+              {
+                post?.user?.name ||
+                'Usuário'
+              }
             </Text>
+
           </View>
 
-          {/* CONTADOR NO SELO */}
-          {promotionCount > 0 ? (
-            <View
-              style={[
-                localStyles.promotedBadge,
-                {
-                  backgroundColor:
-                    `${theme.primary}20`,
-                },
-              ]}
-            >
-              <Ionicons
-                name="rocket"
-                size={15}
-                color={
-                  theme.primary
-                }
-              />
 
-              <Text
-                numberOfLines={1}
-                style={[
-                  localStyles.promotedText,
-                  {
-                    color:
-                      theme.primary,
-                  },
-                ]}
+          {/* PROMOÇÕES */}
+
+          {
+            promotionCount > 0 ? (
+
+              <View
+                style={
+                  localStyles.promotedBadge
+                }
               >
-                {promotionCountText}
-              </Text>
-            </View>
-          ) : null}
+
+                <Ionicons
+                  name="rocket"
+                  size={15}
+                  color={
+                    COLORS.primary
+                  }
+                />
+
+
+                <Text
+                  numberOfLines={1}
+                  style={
+                    localStyles.promotedText
+                  }
+                >
+                  {
+                    promotionCountText
+                  }
+                </Text>
+
+              </View>
+
+            ) : null
+          }
+
         </View>
+
       </TouchableOpacity>
 
-      {/* CARROSSEL */}
-      {postImages.length > 0 ? (
-        <View
-          onLayout={
-            handleCarouselLayout
-          }
-          style={
-            localStyles.carouselContainer
-          }
-        >
-          {imageWidth > 0 ? (
-            <FlatList
-              ref={carouselRef}
-              data={postImages}
-              horizontal
-              pagingEnabled
-              nestedScrollEnabled
-              bounces={false}
-              decelerationRate="fast"
-              showsHorizontalScrollIndicator={
-                false
-              }
-              keyExtractor={(
-                item,
-                index
-              ) =>
-                `${post?.id || 'post'}-${item}-${index}`
-              }
-              renderItem={
-                renderPostImage
-              }
-              onMomentumScrollEnd={
-                handleImageScrollEnd
-              }
-              getItemLayout={(
-                _,
-                index
-              ) => ({
-                length:
-                  imageWidth,
 
-                offset:
-                  imageWidth *
-                  index,
+      {/* ======================================================
+          CARROSSEL
+          ====================================================== */}
 
-                index,
-              })}
-              initialNumToRender={1}
-              windowSize={3}
-            />
-          ) : (
-            <View
-              style={[
-                styles.postImage,
-                {
-                  width: '100%',
+      {
+        postImages.length > 0 ? (
 
-                  backgroundColor:
-                    theme.background,
-                },
-              ]}
-            />
-          )}
+          <View
+            onLayout={
+              handleCarouselLayout
+            }
+            style={
+              localStyles.carouselContainer
+            }
+          >
 
-          {postImages.length > 1 ? (
-            <View
-              pointerEvents="none"
+            {
+              imageWidth > 0 ? (
+
+                <FlatList
+                  ref={
+                    carouselRef
+                  }
+                  data={
+                    postImages
+                  }
+                  horizontal
+                  pagingEnabled
+                  nestedScrollEnabled
+                  bounces={false}
+                  decelerationRate="fast"
+                  showsHorizontalScrollIndicator={
+                    false
+                  }
+                  keyExtractor={(
+                    item,
+                    index
+                  ) =>
+                    `${post?.id || 'post'}-${item}-${index}`
+                  }
+                  renderItem={
+                    renderPostImage
+                  }
+                  onMomentumScrollEnd={
+                    handleImageScrollEnd
+                  }
+                  getItemLayout={(
+                    _,
+                    index
+                  ) => {
+
+                    const ratio =
+                      imageRatios[
+                        index
+                      ] || 1.5;
+
+
+                    const calculatedHeight =
+                      imageWidth /
+                      ratio;
+
+
+                    return {
+
+                      length:
+                        imageWidth,
+
+                      offset:
+                        imageWidth *
+                        index,
+
+                      index,
+
+                      /*
+                       * O FlatList continua
+                       * usando a largura para
+                       * a paginação horizontal.
+                       */
+
+                      height:
+                        calculatedHeight,
+                    };
+
+                  }}
+                  initialNumToRender={
+                    1
+                  }
+                  windowSize={
+                    3
+                  }
+                />
+
+              ) : (
+
+                <View
+                  style={
+                    styles.postImage
+                  }
+                />
+
+              )
+            }
+
+
+            {/* CONTADOR */}
+
+            {
+              postImages.length > 1 ? (
+
+                <View
+                  pointerEvents="none"
+                  style={
+                    localStyles.imageCounter
+                  }
+                >
+
+                  <Text
+                    style={
+                      localStyles.imageCounterText
+                    }
+                  >
+                    {
+                      activeImageIndex + 1
+                    }/
+                    {
+                      postImages.length
+                    }
+                  </Text>
+
+                </View>
+
+              ) : null
+            }
+
+          </View>
+
+        ) : null
+      }
+
+
+      {/* ======================================================
+          BOLINHAS
+          ====================================================== */}
+
+      {
+        postImages.length > 1 ? (
+
+          <View
+            style={
+              localStyles.pagination
+            }
+          >
+
+            {
+              postImages.map(
+                (
+                  _,
+                  index
+                ) => {
+
+                  const isActive =
+                    index ===
+                    activeImageIndex;
+
+
+                  return (
+
+                    <View
+                      key={
+                        `dot-${post?.id}-${index}`
+                      }
+                      style={[
+                        localStyles.paginationDot,
+                        {
+                          width:
+                            isActive
+                              ? 18
+                              : 7,
+
+                          backgroundColor:
+                            isActive
+                              ? COLORS.primary
+                              : COLORS.textSecondary,
+
+                          opacity:
+                            isActive
+                              ? 1
+                              : 0.35,
+                        },
+                      ]}
+                    />
+
+                  );
+
+                }
+              )
+            }
+
+          </View>
+
+        ) : null
+      }
+
+
+      {/* ======================================================
+          RESUMO
+          ====================================================== */}
+
+      {
+        feedSummary ? (
+
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={
+              handleOpenPost
+            }
+            style={
+              styles.content
+            }
+          >
+
+            <Text
+              numberOfLines={3}
               style={
-                localStyles.imageCounter
+                styles.description
               }
             >
-              <Text
-                style={
-                  localStyles.imageCounterText
-                }
-              >
-                {activeImageIndex + 1}/
-                {postImages.length}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
+              {
+                feedSummary
+              }
+            </Text>
 
-      {/* BOLINHAS */}
-      {postImages.length > 1 ? (
+          </TouchableOpacity>
+
+        ) : null
+      }
+
+
+      {/* ======================================================
+          AÇÕES + DATA
+          ====================================================== */}
+
+      <View
+        style={
+          styles.actions
+        }
+      >
+
+        {/* GRUPO DOS DOIS BOTÕES */}
+
         <View
           style={
-            localStyles.pagination
+            localStyles.actionGroup
           }
         >
-          {postImages.map(
-            (
-              _,
-              index
-            ) => {
-              const isActive =
-                index ===
-                activeImageIndex;
 
-              return (
-                <View
-                  key={`dot-${post?.id}-${index}`}
-                  style={[
-                    localStyles.paginationDot,
-                    {
-                      width:
-                        isActive
-                          ? 18
-                          : 7,
+          {/* COMPARTILHAR */}
 
-                      backgroundColor:
-                        isActive
-                          ? theme.primary
-                          : theme
-                              .textSecondary,
-
-                      opacity:
-                        isActive
-                          ? 1
-                          : 0.35,
-                    },
-                  ]}
-                />
-              );
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[
+              styles.actionButton,
+              localStyles.shareActionButton,
+            ]}
+            onPress={
+              handleSharePress
             }
-          )}
-        </View>
-      ) : null}
-
-      {/* RESUMO */}
-      {feedSummary ? (
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={
-            handleOpenPost
-          }
-          style={styles.content}
-        >
-          <Text
-            style={[
-              localStyles.summaryLabel,
-              {
-                color:
-                  theme
-                    .textSecondary,
-              },
-            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar publicação"
           >
-            Resumo
-          </Text>
 
-          <Text
-            numberOfLines={3}
-            style={[
-              styles.description,
-              {
-                color:
-                  theme.text,
-              },
-            ]}
-          >
-            {feedSummary}
-          </Text>
+            <Ionicons
+              name="paper-plane-outline"
+              size={24}
+              color={
+                COLORS.white
+              }
+            />
 
-          <Text
-            style={[
-              localStyles.detailsHint,
-              {
-                color:
-                  theme.primary,
-              },
-            ]}
-          >
-            Ver detalhes
-          </Text>
-        </TouchableOpacity>
-      ) : null}
+          </TouchableOpacity>
 
-      {/* AÇÕES */}
-      <View
-        style={[
-          styles.actions,
-          {
-            borderTopColor:
-              theme.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={
-            styles.actionButton
-          }
-          onPress={
-            handleSharePress
-          }
-        >
-          <Ionicons
-            name="paper-plane-outline"
-            size={24}
-            color={
-              theme.primary
+
+          {/* PROMOVER */}
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={
+              styles.actionButton
             }
-          />
-
-          <Text
-            style={[
-              styles.actionText,
-              {
-                color:
-                  theme.primary,
-              },
-            ]}
-          >
-            Compartilhar
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={
-            styles.actionButton
-          }
-          onPress={
-            handlePromotePress
-          }
-        >
-          <Ionicons
-            name={
+            onPress={
+              handlePromotePress
+            }
+            accessibilityRole="button"
+            accessibilityLabel={
               promotedByMe
-                ? 'rocket'
-                : 'rocket-outline'
+                ? 'Remover promoção'
+                : 'Promover publicação'
             }
-            size={24}
-            color={
-              theme.primary
-            }
-          />
-
-          <Text
-            style={[
-              styles.actionText,
-              {
-                color:
-                  theme.primary,
-              },
-            ]}
           >
-            {promotedByMe
-              ? 'Promovido'
-              : 'Promover'}
-          </Text>
-        </TouchableOpacity>
+
+            <Ionicons
+              name={
+                promotedByMe
+                  ? 'rocket'
+                  : 'rocket-outline'
+              }
+              size={24}
+              color={
+                promotedByMe
+                  ? COLORS.primary
+                  : COLORS.white
+              }
+            />
+
+          </TouchableOpacity>
+
+        </View>
+
+
+        {/* DATA À DIREITA */}
+
+        <Text
+          numberOfLines={1}
+          style={
+            styles.date
+          }
+        >
+          {
+            formatDate(
+              post?.created_at ||
+              post?.createdAt
+            )
+          }
+        </Text>
+
       </View>
+
     </View>
+
   );
 }
 
+
+/*
+ * ============================================================
+ * ESTILOS LOCAIS
+ * ============================================================
+ */
+
 const localStyles =
   StyleSheet.create({
+
+    /*
+     * ========================================================
+     * AVATAR PADRÃO
+     * ========================================================
+     */
+
     defaultAvatarContainer: {
       width: 48,
 
@@ -855,6 +1327,7 @@ const localStyles =
         'transparent',
     },
 
+
     defaultAvatar: {
       width: 48,
 
@@ -866,6 +1339,13 @@ const localStyles =
         },
       ],
     },
+
+
+    /*
+     * ========================================================
+     * AVATAR REAL
+     * ========================================================
+     */
 
     remoteAvatarContainer: {
       width: 48,
@@ -882,11 +1362,21 @@ const localStyles =
         'transparent',
     },
 
+
     remoteAvatar: {
       width: '100%',
 
       height: '100%',
+
+      borderRadius: 24,
     },
+
+
+    /*
+     * ========================================================
+     * TEXTO DO USUÁRIO
+     * ========================================================
+     */
 
     userTextContainer: {
       flex: 1,
@@ -894,31 +1384,64 @@ const localStyles =
       minWidth: 0,
     },
 
+
+    /*
+     * ========================================================
+     * SELO DE PROMOÇÃO
+     * ========================================================
+     */
+
     promotedBadge: {
-      maxWidth: 120,
+      maxWidth: 125,
+
+      minHeight: 30,
 
       flexDirection: 'row',
 
       alignItems: 'center',
 
+      justifyContent:
+        'center',
+
       paddingHorizontal: 9,
 
-      paddingVertical: 6,
+      paddingVertical: 5,
 
-      borderRadius: 14,
+      borderRadius: 15,
 
       marginLeft: 8,
+
+      backgroundColor:
+        'rgba(58, 194, 248, 0.12)',
+
+      flexShrink: 0,
     },
+
 
     promotedText: {
       flexShrink: 1,
 
       marginLeft: 5,
 
-      fontSize: 11,
+      fontSize: 10,
 
-      fontWeight: '700',
+      lineHeight: 14,
+
+      fontWeight: '600',
+
+      color:
+        COLORS.primary,
+
+      includeFontPadding:
+        false,
     },
+
+
+    /*
+     * ========================================================
+     * CARROSSEL
+     * ========================================================
+     */
 
     carouselContainer: {
       position: 'relative',
@@ -926,35 +1449,72 @@ const localStyles =
       width: '100%',
 
       overflow: 'hidden',
+
+      backgroundColor:
+        COLORS.background,
     },
+
+
+    imageWrapper: {
+      alignSelf: 'flex-start',
+
+      overflow: 'hidden',
+
+      backgroundColor:
+        COLORS.background,
+    },
+
+
+    /*
+     * ========================================================
+     * IMAGEM INDISPONÍVEL
+     * ========================================================
+     */
 
     unavailableImage: {
       alignItems: 'center',
 
       justifyContent:
         'center',
+
+      backgroundColor:
+        COLORS.deepBlue,
     },
+
 
     unavailableText: {
       marginTop: 8,
 
-      fontSize: 14,
+      fontSize: 13,
 
-      fontWeight: '600',
+      fontWeight: '500',
+
+      color:
+        COLORS.textSecondary,
+
+      includeFontPadding:
+        false,
     },
+
+
+    /*
+     * ========================================================
+     * CONTADOR DA IMAGEM
+     * ========================================================
+     */
 
     imageCounter: {
       position: 'absolute',
 
-      top: 12,
+      top: 10,
 
-      right: 12,
+      right: 10,
 
       minWidth: 42,
 
-      height: 28,
+      height: 26,
 
-      borderRadius: 14,
+      borderRadius: 13,
 
       alignItems: 'center',
 
@@ -964,19 +1524,33 @@ const localStyles =
       paddingHorizontal: 9,
 
       backgroundColor:
-        'rgba(0, 0, 0, 0.62)',
+        'rgba(20, 20, 20, 0.78)',
     },
+
 
     imageCounterText: {
-      color: '#ffffff',
+      color:
+        COLORS.white,
 
-      fontSize: 12,
+      fontSize: 11,
 
-      fontWeight: '800',
+      lineHeight: 14,
+
+      fontWeight: '600',
+
+      includeFontPadding:
+        false,
     },
 
+
+    /*
+     * ========================================================
+     * PAGINAÇÃO
+     * ========================================================
+     */
+
     pagination: {
-      minHeight: 26,
+      minHeight: 25,
 
       flexDirection: 'row',
 
@@ -987,10 +1561,14 @@ const localStyles =
 
       paddingHorizontal: 12,
 
-      paddingTop: 9,
+      paddingTop: 7,
 
-      paddingBottom: 5,
+      paddingBottom: 4,
+
+      backgroundColor:
+        COLORS.background,
     },
+
 
     paginationDot: {
       height: 7,
@@ -1000,27 +1578,43 @@ const localStyles =
       marginHorizontal: 3,
     },
 
-    summaryLabel: {
-      marginBottom: 5,
 
-      fontSize: 12,
+    /*
+     * ========================================================
+     * GRUPO DOS BOTÕES
+     * ========================================================
+     */
 
-      fontWeight: '700',
+    actionGroup: {
+      flexDirection: 'row',
 
-      textTransform:
-        'uppercase',
+      alignItems: 'center',
 
-      letterSpacing: 0.4,
-    },
-
-    detailsHint: {
-      alignSelf:
+      justifyContent:
         'flex-start',
 
-      marginTop: 8,
-
-      fontSize: 13,
-
-      fontWeight: '700',
+      flexShrink: 0,
     },
+
+
+    /*
+     * ========================================================
+     * ESPAÇO EXTRA ENTRE OS DOIS BOTÕES
+     * ========================================================
+     *
+     * Antes:
+     *
+     * 10px
+     *
+     * Agora:
+     *
+     * 25px
+     *
+     * Aumento exato de 15px.
+     */
+
+    shareActionButton: {
+      marginRight: 25,
+    },
+
   });

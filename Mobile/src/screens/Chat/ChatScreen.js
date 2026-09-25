@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  StyleSheet,
 } from 'react-native';
 
 import {
@@ -28,10 +29,6 @@ import Header from '../../components/Header';
 import ChatBubble from '../../components/ChatBubble';
 
 import {
-  useTheme,
-} from '../../hooks/useTheme';
-
-import {
   useSocket,
 } from '../../hooks/useSocket';
 
@@ -43,20 +40,60 @@ import api from '../../services/api';
 
 import styles from './styles';
 
+
+/*
+ * ============================================================
+ * TEMA VISUAL
+ * ============================================================
+ *
+ * Mantemos a tela de Chat no mesmo padrão visual
+ * escuro utilizado nas demais telas do aplicativo.
+ *
+ * A lógica da aplicação não depende dessas cores.
+ */
+
+const theme = {
+  background: '#141414',
+
+  card: '#141414',
+
+  text: '#F5F5F5',
+
+  textSecondary: '#AEB8BD',
+
+  primary: '#3AC2F8',
+
+  inputBackground: '#05618D',
+
+  border:
+    'rgba(245, 245, 245, 0.18)',
+};
+
+
 export default function ChatScreen({
   route,
 }) {
   const navigation =
     useNavigation();
 
+
+  /*
+   * ==========================================================
+   * DADOS RECEBIDOS DA NAVEGAÇÃO
+   * ==========================================================
+   */
+
   const {
     chatId,
     user,
   } = route.params;
 
-  const {
-    theme,
-  } = useTheme();
+
+  /*
+   * ==========================================================
+   * SOCKET
+   * ==========================================================
+   */
 
   const {
     socket,
@@ -64,12 +101,33 @@ export default function ChatScreen({
     sendMessage,
   } = useSocket();
 
+
+  /*
+   * ==========================================================
+   * USUÁRIO LOGADO
+   * ==========================================================
+   */
+
   const {
     user: currentUser,
   } = useAuth();
 
+
+  /*
+   * ==========================================================
+   * REFERÊNCIA DA LISTA
+   * ==========================================================
+   */
+
   const flatListRef =
     useRef(null);
+
+
+  /*
+   * ==========================================================
+   * ESTADOS
+   * ==========================================================
+   */
 
   const [
     message,
@@ -86,49 +144,51 @@ export default function ChatScreen({
     setSendingMessage,
   ] = useState(false);
 
+
   /*
+   * ==========================================================
    * IDENTIFICAR CONTA ANONIMIZADA
-   *
-   * O backend envia:
-   *
-   * anonymized: true
-   *
-   * Também verifica o nome para manter
-   * compatibilidade com conversas que
-   * já estavam carregadas no aplicativo.
+   * ==========================================================
    */
+
   const isAnonymized =
     user?.anonymized === true ||
     user?.name ===
       'Usuário removido';
 
+
   /*
-   * NOME EXIBIDO NO CABEÇALHO
+   * ==========================================================
+   * NOME DO CHAT
+   * ==========================================================
    */
+
   const chatTitle =
     isAnonymized
       ? 'Usuário removido'
       : user?.name ||
         'Usuário';
 
+
   /*
-   * VOLTAR DIRETAMENTE
-   * PARA CONTATOS
-   *
-   * Não utiliza goBack() nem popToTop(),
-   * porque esses métodos dependem do
-   * histórico de navegação e podem
-   * retornar ao Feed.
+   * ==========================================================
+   * VOLTAR PARA CONTATOS
+   * ==========================================================
    */
+
   function handleBackToContacts() {
     navigation.navigate(
       'ContactsScreen'
     );
   }
 
+
   /*
+   * ==========================================================
    * BUSCAR MENSAGENS
+   * ==========================================================
    */
+
   async function loadMessages() {
     try {
       const response =
@@ -163,10 +223,12 @@ export default function ChatScreen({
         }
       );
 
+
       /*
        * O BACKEND RETORNA 410
-       * QUANDO A CONTA FOI REMOVIDA
+       * QUANDO A CONTA FOI REMOVIDA.
        */
+
       if (
         error.response?.status ===
         410
@@ -177,9 +239,11 @@ export default function ChatScreen({
 
         Alert.alert(
           'Conversa indisponível',
+
           error.response?.data
             ?.message ||
             'Esta conta foi removida e a conversa não está mais disponível.',
+
           [
             {
               text:
@@ -189,6 +253,7 @@ export default function ChatScreen({
                 handleBackToContacts,
             },
           ],
+
           {
             cancelable:
               false,
@@ -198,8 +263,10 @@ export default function ChatScreen({
         return;
       }
 
+
       Alert.alert(
         'Erro',
+
         error.response?.data
           ?.message ||
           'Não foi possível carregar as mensagens.'
@@ -207,22 +274,37 @@ export default function ChatScreen({
     }
   }
 
+
   /*
+   * ==========================================================
    * INICIAR CHAT E SOCKET
+   * ==========================================================
    */
+
   useEffect(() => {
     /*
-     * Se a conta já está identificada
-     * como removida, não tenta carregar
-     * nem entrar na sala do Socket.
+     * Conta anonimizada:
+     * não carregamos mensagens e não
+     * entramos na sala do Socket.
      */
+
     if (isAnonymized) {
       setMessages([]);
 
       return undefined;
     }
 
+
+    /*
+     * Carregar histórico.
+     */
+
     loadMessages();
+
+
+    /*
+     * Entrar na sala do Socket.
+     */
 
     if (chatId) {
       joinRoom(
@@ -230,9 +312,13 @@ export default function ChatScreen({
       );
     }
 
+
     /*
+     * ========================================================
      * RECEBER NOVAS MENSAGENS
+     * ========================================================
      */
+
     function handleReceiveMessage(
       newMessage
     ) {
@@ -250,15 +336,28 @@ export default function ChatScreen({
             user?.id
           );
 
+
+      /*
+       * Ignora mensagens de outras conversas.
+       */
+
       if (!isCurrentChat) {
         return;
       }
+
+
+      /*
+       * Adiciona a mensagem somente
+       * se ela ainda não existir.
+       */
 
       setMessages(
         (oldMessages) => {
           const exists =
             oldMessages.some(
-              (savedMessage) =>
+              (
+                savedMessage
+              ) =>
                 Number(
                   savedMessage.id
                 ) ===
@@ -267,9 +366,11 @@ export default function ChatScreen({
                 )
             );
 
+
           if (exists) {
             return oldMessages;
           }
+
 
           return [
             ...oldMessages,
@@ -278,14 +379,23 @@ export default function ChatScreen({
         }
       );
 
+
+      /*
+       * Rolar para a última mensagem.
+       */
+
       setTimeout(() => {
         flatListRef.current
           ?.scrollToEnd({
-            animated:
-              true,
+            animated: true,
           });
       }, 100);
     }
+
+
+    /*
+     * Registrar listener do Socket.
+     */
 
     if (socket) {
       socket.on(
@@ -293,6 +403,11 @@ export default function ChatScreen({
         handleReceiveMessage
       );
     }
+
+
+    /*
+     * Remover listener ao sair.
+     */
 
     return () => {
       if (socket) {
@@ -310,18 +425,25 @@ export default function ChatScreen({
     user?.id,
   ]);
 
+
   /*
-   * ENVIAR MENSAGEM DE TEXTO
+   * ==========================================================
+   * ENVIAR MENSAGEM
+   * ==========================================================
    */
+
   async function handleSendMessage() {
     /*
-     * A conta anonimizada não pode
+     * Conta anonimizada não pode
      * receber novas mensagens.
      */
+
     if (isAnonymized) {
       Alert.alert(
         'Conta removida',
+
         'Esta conta foi anonimizada e não pode receber novas mensagens.',
+
         [
           {
             text:
@@ -336,21 +458,42 @@ export default function ChatScreen({
       return;
     }
 
+
+    /*
+     * Evita vários envios ao mesmo tempo.
+     */
+
     if (sendingMessage) {
       return;
     }
 
+
+    /*
+     * Remove espaços extras.
+     */
+
     const normalizedMessage =
       message.trim();
+
+
+    /*
+     * Não envia mensagem vazia.
+     */
 
     if (!normalizedMessage) {
       return;
     }
 
+
     try {
       setSendingMessage(
         true
       );
+
+
+      /*
+       * Corpo enviado para o backend.
+       */
 
       const body = {
         receiver_id:
@@ -360,37 +503,51 @@ export default function ChatScreen({
           normalizedMessage,
       };
 
+
       /*
+       * ======================================================
        * SALVAR NO BANCO
+       * ======================================================
        */
+
       const response =
         await api.post(
           '/chat/send',
           body
         );
 
+
       const savedMessage =
         response.data;
 
+
       /*
+       * ======================================================
        * ENVIAR PELO SOCKET
+       * ======================================================
        */
+
       sendMessage(
         savedMessage
       );
 
+
       /*
+       * ======================================================
        * ADICIONAR LOCALMENTE
+       * ======================================================
        *
-       * A verificação evita que uma
-       * mensagem apareça duas vezes caso
-       * o Socket também a devolva.
+       * Evita duplicação caso o Socket
+       * também devolva a mesma mensagem.
        */
+
       setMessages(
         (oldMessages) => {
           const alreadyExists =
             oldMessages.some(
-              (savedItem) =>
+              (
+                savedItem
+              ) =>
                 Number(
                   savedItem.id
                 ) ===
@@ -399,9 +556,11 @@ export default function ChatScreen({
                 )
             );
 
+
           if (alreadyExists) {
             return oldMessages;
           }
+
 
           return [
             ...oldMessages,
@@ -410,15 +569,25 @@ export default function ChatScreen({
         }
       );
 
+
+      /*
+       * Limpa o campo.
+       */
+
       setMessage('');
+
+
+      /*
+       * Vai para a última mensagem.
+       */
 
       setTimeout(() => {
         flatListRef.current
           ?.scrollToEnd({
-            animated:
-              true,
+            animated: true,
           });
       }, 100);
+
     } catch (error) {
       console.log(
         'ERRO AO ENVIAR MENSAGEM:',
@@ -436,11 +605,11 @@ export default function ChatScreen({
         }
       );
 
+
       /*
-       * O BACKEND RETORNA 410
-       * QUANDO O DESTINATÁRIO
-       * FOI ANONIMIZADO
+       * Destinatário anonimizado.
        */
+
       if (
         error.response?.status ===
         410
@@ -451,9 +620,11 @@ export default function ChatScreen({
 
         Alert.alert(
           'Conta removida',
+
           error.response?.data
             ?.message ||
             'Esta conta foi removida e não pode receber mensagens.',
+
           [
             {
               text:
@@ -463,6 +634,7 @@ export default function ChatScreen({
                 handleBackToContacts,
             },
           ],
+
           {
             cancelable:
               false,
@@ -472,8 +644,10 @@ export default function ChatScreen({
         return;
       }
 
+
       Alert.alert(
         'Erro',
+
         error.response?.data
           ?.message ||
           'Não foi possível enviar a mensagem.'
@@ -484,6 +658,13 @@ export default function ChatScreen({
       );
     }
   }
+
+
+  /*
+   * ==========================================================
+   * RENDER DA TELA
+   * ==========================================================
+   */
 
   return (
     <KeyboardAvoidingView
@@ -500,7 +681,11 @@ export default function ChatScreen({
           : undefined
       }
     >
-      {/* CABEÇALHO */}
+
+      {/* ====================================================
+       * CABEÇALHO
+       * ================================================== */}
+
       <Header
         title={
           chatTitle
@@ -511,20 +696,18 @@ export default function ChatScreen({
         }
       />
 
-      {/* AVISO DE CONTA ANONIMIZADA */}
+
+      {/* ====================================================
+       * AVISO DE CONTA ANONIMIZADA
+       * ================================================== */}
+
       {isAnonymized ? (
         <View
-          style={[
-            localStyles.anonymizedNotice,
-            {
-              backgroundColor:
-                theme.card,
-
-              borderBottomColor:
-                theme.border,
-            },
-          ]}
+          style={
+            localStyles.anonymizedNotice
+          }
         >
+
           <Ionicons
             name="information-circle-outline"
             size={20}
@@ -534,29 +717,32 @@ export default function ChatScreen({
           />
 
           <Text
-            style={[
-              localStyles.anonymizedNoticeText,
-              {
-                color:
-                  theme.textSecondary,
-              },
-            ]}
+            style={
+              localStyles.anonymizedNoticeText
+            }
           >
             Esta conta foi removida e a conversa não está mais disponível.
           </Text>
+
         </View>
       ) : null}
 
-      {/* LISTA DE MENSAGENS */}
+
+      {/* ====================================================
+       * LISTA DE MENSAGENS
+       * ================================================== */}
+
       <FlatList
         ref={
           flatListRef
         }
+
         data={
           isAnonymized
             ? []
             : messages
         }
+
         keyExtractor={(
           item,
           index
@@ -566,13 +752,17 @@ export default function ChatScreen({
               index
           )
         }
+
         contentContainerStyle={
           styles.messagesContainer
         }
+
         showsVerticalScrollIndicator={
           false
         }
+
         keyboardShouldPersistTaps="handled"
+
         renderItem={({
           item,
         }) => (
@@ -585,6 +775,7 @@ export default function ChatScreen({
             }
           />
         )}
+
         onContentSizeChange={() => {
           if (
             !isAnonymized
@@ -596,48 +787,51 @@ export default function ChatScreen({
               });
           }
         }}
+
         ListEmptyComponent={
           <View
             style={
               localStyles.emptyContainer
             }
           >
+
             <Ionicons
               name={
                 isAnonymized
                   ? 'lock-closed-outline'
                   : 'chatbubble-ellipses-outline'
               }
-              size={44}
+              size={42}
               color={
                 theme.textSecondary
               }
             />
 
             <Text
-              style={[
-                localStyles.emptyText,
-                {
-                  color:
-                    theme.textSecondary,
-                },
-              ]}
+              style={
+                localStyles.emptyText
+              }
             >
               {isAnonymized
                 ? 'Esta conversa não está mais disponível.'
                 : 'Nenhuma mensagem nesta conversa.'}
             </Text>
+
           </View>
         }
       />
 
-      {/* ÁREA DE ENVIO */}
+
+      {/* ====================================================
+       * ÁREA DE ENVIO
+       * ================================================== */}
+
       <View
         style={[
           styles.inputContainer,
           {
             backgroundColor:
-              theme.card,
+              theme.background,
 
             borderTopColor:
               theme.border,
@@ -649,6 +843,11 @@ export default function ChatScreen({
           },
         ]}
       >
+
+        {/* ==================================================
+         * CAMPO DE TEXTO
+         * ================================================== */}
+
         <TextInput
           style={[
             styles.input,
@@ -660,39 +859,57 @@ export default function ChatScreen({
                 theme.inputBackground,
             },
           ]}
+
           placeholder={
             isAnonymized
               ? 'Conversa indisponível'
               : 'Digite uma mensagem...'
           }
+
           placeholderTextColor={
-            theme.textSecondary
+            'rgba(245, 245, 245, 0.68)'
           }
-          value={message}
+
+          value={
+            message
+          }
+
           onChangeText={
             setMessage
           }
+
           editable={
             !isAnonymized &&
             !sendingMessage
           }
+
           multiline
+
           maxLength={2000}
+
           returnKeyType="send"
+
           blurOnSubmit={false}
         />
 
-        {/* ENVIAR */}
+
+        {/* ==================================================
+         * BOTÃO ENVIAR
+         * ================================================== */}
+
         <TouchableOpacity
           activeOpacity={0.8}
+
           onPress={
             handleSendMessage
           }
+
           disabled={
             isAnonymized ||
             sendingMessage ||
             !message.trim()
           }
+
           style={[
             styles.sendButton,
             {
@@ -703,36 +920,54 @@ export default function ChatScreen({
                 isAnonymized ||
                 sendingMessage ||
                 !message.trim()
-                  ? 0.45
+                  ? 0.4
                   : 1,
             },
           ]}
+
           accessibilityRole="button"
+
           accessibilityLabel={
             isAnonymized
               ? 'Conversa indisponível'
               : 'Enviar mensagem'
           }
         >
+
           <Ionicons
             name={
               isAnonymized
                 ? 'lock-closed-outline'
                 : 'send'
             }
-            size={22}
-            color="#ffffff"
+            size={21}
+            color="#141414"
           />
+
         </TouchableOpacity>
+
       </View>
+
     </KeyboardAvoidingView>
   );
 }
 
-const localStyles = {
+
+/*
+ * ============================================================
+ * ESTILOS LOCAIS
+ * ============================================================
+ *
+ * Estes estilos são utilizados somente
+ * por elementos específicos desta tela.
+ */
+
+const localStyles = StyleSheet.create({
+
   /*
    * AVISO DE CONTA ANONIMIZADA
    */
+
   anonymizedNotice: {
     width: '100%',
 
@@ -742,9 +977,15 @@ const localStyles = {
 
     paddingHorizontal: 16,
 
-    paddingVertical: 12,
+    paddingVertical: 11,
+
+    backgroundColor:
+      '#1B1B1B',
 
     borderBottomWidth: 1,
+
+    borderBottomColor:
+      'rgba(245, 245, 245, 0.16)',
   },
 
   anonymizedNoticeText: {
@@ -755,11 +996,15 @@ const localStyles = {
     fontSize: 13,
 
     lineHeight: 19,
+
+    color: '#AEB8BD',
   },
+
 
   /*
    * LISTA SEM MENSAGENS
    */
+
   emptyContainer: {
     flex: 1,
 
@@ -779,6 +1024,9 @@ const localStyles = {
 
     lineHeight: 21,
 
+    color: '#AEB8BD',
+
     textAlign: 'center',
   },
-};
+
+});

@@ -2,8 +2,8 @@ import React from 'react';
 
 import {
   View,
-  Text,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 
 import {
@@ -14,13 +14,37 @@ import {
   useNavigation,
 } from '@react-navigation/native';
 
-import {
-  useTheme,
-} from '../../hooks/useTheme';
-
 import styles from './styles';
 
+
+/*
+ * ============================================================
+ * LOGO OFICIAL
+ * ============================================================
+ *
+ * Localização:
+ *
+ * assets/logo.png
+ *
+ * Este Header está em:
+ *
+ * src/components/Header/index.js
+ *
+ * Portanto:
+ *
+ * ../../../assets/logo.png
+ */
+import logo from '../../../assets/logo.png';
+
+
+/*
+ * ============================================================
+ * HEADER
+ * ============================================================
+ */
+
 export default function Header({
+
   title,
 
   showBackButton = false,
@@ -33,151 +57,212 @@ export default function Header({
    */
   onBackPress = null,
 
+  /*
+   * ÍCONE DA DIREITA
+   */
   rightIcon = null,
 
+  /*
+   * AÇÃO DO ÍCONE DA DIREITA
+   */
   onRightPress = null,
+
 }) {
+
   const navigation =
     useNavigation();
 
-  const {
-    theme,
-  } = useTheme();
 
   /*
+   * ==========================================================
    * VOLTAR
-   *
-   * Se a tela informou uma ação
-   * personalizada, essa ação será usada.
-   *
-   * Caso contrário, mantém o comportamento
-   * padrão das outras telas.
+   * ==========================================================
    */
+
   function handleBackPress() {
+
+    /*
+     * Se existir uma ação personalizada,
+     * ela tem prioridade.
+     */
     if (
       typeof onBackPress ===
       'function'
     ) {
+
       onBackPress();
 
       return;
     }
 
+
+    /*
+     * Comportamento padrão.
+     */
     if (
       navigation.canGoBack()
     ) {
+
       navigation.goBack();
+
     }
+
   }
 
+
   /*
+   * ==========================================================
    * AÇÃO DO ÍCONE DA DIREITA
+   * ==========================================================
    */
+
   function handleRightPress() {
+
     if (
       typeof onRightPress ===
       'function'
     ) {
+
       onRightPress();
+
     }
+
   }
 
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor:
-            theme.background,
 
-          borderBottomColor:
-            theme.border,
-        },
-      ]}
+  /*
+   * ==========================================================
+   * HEADER
+   * ==========================================================
+   */
+
+  return (
+
+    <View
+      style={
+        styles.container
+      }
     >
-      {/* BOTÃO VOLTAR */}
+
+
+      {/* ====================================================
+          ÁREA ESQUERDA
+          ==================================================== */}
+
       <View
         style={
           styles.leftContainer
         }
       >
-        {showBackButton ? (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={
-              handleBackPress
-            }
-            style={
-              styles.iconButton
-            }
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-          >
-            <Ionicons
-              name="arrow-back"
-              size={24}
-              color={
-                theme.text
+
+        {
+          showBackButton ? (
+
+            <TouchableOpacity
+              activeOpacity={
+                0.7
               }
-            />
-          </TouchableOpacity>
-        ) : null}
+              onPress={
+                handleBackPress
+              }
+              style={
+                styles.iconButton
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+            >
+
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color="#F5F5F5"
+              />
+
+            </TouchableOpacity>
+
+          ) : null
+        }
+
       </View>
 
-      {/* TÍTULO */}
+
+      {/* ====================================================
+          LOGO CENTRAL
+          ==================================================== */}
+
       <View
         style={
           styles.centerContainer
         }
       >
-        <Text
-          style={[
-            styles.title,
-            {
-              color:
-                theme.text,
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
+
+        <Image
+          source={
+            logo
+          }
+          style={
+            styles.logoImage
+          }
+          resizeMode="contain"
+          accessible={true}
+          accessibilityLabel={
+            title
+              ? `Doalize - ${title}`
+              : 'Doalize'
+          }
+        />
+
       </View>
 
-      {/* ÍCONE DIREITO */}
+
+      {/* ====================================================
+          ÁREA DIREITA
+          ==================================================== */}
+
       <View
         style={
           styles.rightContainer
         }
       >
-        {rightIcon ? (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={
-              handleRightPress
-            }
-            disabled={
-              typeof onRightPress !==
-              'function'
-            }
-            style={
-              styles.iconButton
-            }
-            accessibilityRole="button"
-            accessibilityLabel="Ação do cabeçalho"
-          >
-            <Ionicons
-              name={
-                rightIcon
+
+        {
+          rightIcon ? (
+
+            <TouchableOpacity
+              activeOpacity={
+                0.7
               }
-              size={24}
-              color={
-                theme.text
+              onPress={
+                handleRightPress
               }
-            />
-          </TouchableOpacity>
-        ) : null}
+              disabled={
+                typeof onRightPress !==
+                'function'
+              }
+              style={
+                styles.iconButton
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Ação do cabeçalho"
+            >
+
+              <Ionicons
+                name={
+                  rightIcon
+                }
+                size={24}
+                color="#F5F5F5"
+              />
+
+            </TouchableOpacity>
+
+          ) : null
+        }
+
       </View>
+
     </View>
+
   );
+
 }

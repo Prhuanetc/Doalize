@@ -2,58 +2,95 @@ import {
   StyleSheet,
 } from 'react-native';
 
+
 export default StyleSheet.create({
-  container: {
-    flex: 1,
-  },
 
   /*
-   * LISTA
+   * ==========================================================
+   * TELA
+   * ==========================================================
    */
+
+  container: {
+    flex: 1,
+
+    /*
+     * Mesmo fundo utilizado no restante
+     * do aplicativo.
+     */
+    backgroundColor: '#141414',
+  },
+
+
+  /*
+   * ==========================================================
+   * LISTA
+   * ==========================================================
+   *
+   * Em vez de cartões individuais, usamos
+   * uma lista contínua e limpa.
+   */
+
   list: {
-    padding: 14,
-    paddingBottom: 30,
+    paddingTop: 2,
+    paddingBottom: 20,
   },
 
   emptyList: {
     flexGrow: 1,
   },
 
+
   /*
-   * ITEM
+   * ==========================================================
+   * ITEM DA CONVERSA
+   * ==========================================================
    */
+
   contactItem: {
     width: '100%',
 
-    flexDirection: 'row',
+    minHeight: 78,
 
+    flexDirection: 'row',
     alignItems: 'center',
 
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
 
-    borderRadius: 18,
+    /*
+     * Não utilizamos mais:
+     *
+     * - card branco
+     * - sombra
+     * - bordas arredondadas
+     *
+     * Isso deixa a tela mais próxima
+     * do visual do Feed.
+     */
+    backgroundColor: '#141414',
 
-    marginBottom: 14,
-
-    borderWidth: 1,
+    /*
+     * Separador extremamente discreto
+     * entre as conversas.
+     */
+    borderBottomWidth: 1,
+    borderBottomColor:
+      'rgba(245, 245, 245, 0.14)',
   },
 
-  /*
-   * AVATAR PADRÃO
-   *
-   * O contêiner não possui fundo branco,
-   * borda ou sombra.
-   *
-   * O overflow hidden corta somente a parte
-   * ampliada que ultrapassar a área de 58 × 58.
-   */
-  defaultAvatarContainer: {
-    width: 58,
 
-    height: 58,
+  /*
+   * ==========================================================
+   * AVATAR PADRÃO
+   * ==========================================================
+   */
+
+  defaultAvatarContainer: {
+    width: 56,
+    height: 56,
 
     alignItems: 'center',
-
     justifyContent: 'center',
 
     overflow: 'hidden',
@@ -62,89 +99,107 @@ export default StyleSheet.create({
       'transparent',
   },
 
-  /*
-   * Os PNGs imageuserdark e imageuserlight
-   * possuem uma grande área transparente.
-   *
-   * A escala amplia o desenho central para
-   * ocupar aproximadamente toda a área
-   * destinada ao avatar.
-   */
   defaultAvatar: {
-    width: 58,
+    width: 56,
+    height: 56,
 
-    height: 58,
-
+    /*
+     * Os PNGs possuem bastante área
+     * transparente ao redor do desenho.
+     *
+     * A escala aumenta somente o desenho
+     * central sem colocar um fundo branco.
+     */
     transform: [
       {
-        scale: 4.2,
+        scale: 4.0,
       },
     ],
   },
 
+
   /*
-   * FOTO REAL DO CONTATO
-   *
-   * A foto real não recebe scale, pois deve
-   * preencher naturalmente o círculo.
+   * ==========================================================
+   * FOTO REAL
+   * ==========================================================
    */
+
   remoteAvatarContainer: {
-    width: 58,
+    width: 56,
+    height: 56,
 
-    height: 58,
-
-    borderRadius: 29,
+    borderRadius: 28,
 
     overflow: 'hidden',
 
     backgroundColor:
-      'transparent',
+      '#202020',
   },
 
   remoteAvatar: {
     width: '100%',
-
     height: '100%',
   },
 
+
   /*
-   * Mantido para compatibilidade caso outro
-   * trecho do projeto ainda utilize styles.avatar.
+   * Mantido para compatibilidade com
+   * qualquer outro trecho que eventualmente
+   * utilize styles.avatar.
    */
+
   avatar: {
-    width: 58,
+    width: 56,
+    height: 56,
 
-    height: 58,
-
-    borderRadius: 29,
+    borderRadius: 28,
   },
 
+
   /*
-   * INFORMAÇÕES
+   * ==========================================================
+   * INFORMAÇÕES DA CONVERSA
+   * ==========================================================
    */
+
   contactInfo: {
     flex: 1,
 
-    marginLeft: 14,
-
     minWidth: 0,
+
+    marginLeft: 14,
+    marginRight: 10,
   },
 
   name: {
     fontSize: 16,
 
-    fontWeight: '700',
+    /*
+     * O nome fica um pouco mais evidente,
+     * como fizemos no PostCard.
+     */
+    fontWeight: '600',
+
+    color: '#F5F5F5',
   },
 
   lastMessage: {
-    marginTop: 4,
+    marginTop: 5,
 
     fontSize: 14,
+
+    lineHeight: 19,
+
+    color: '#AEB8BD',
   },
 
+
   /*
-   * LADO DIREITO
+   * ==========================================================
+   * ÁREA DIREITA
+   * ==========================================================
    */
+
   rightContent: {
     alignItems: 'flex-end',
 
@@ -153,26 +208,39 @@ export default StyleSheet.create({
 
     minHeight: 50,
 
-    marginLeft: 10,
+    marginLeft: 4,
   },
+
+
+  /*
+   * Horário da última mensagem.
+   */
 
   time: {
     fontSize: 12,
+
+    lineHeight: 16,
+
+    fontWeight: '400',
+
+    color: '#AEB8BD',
   },
 
+
   /*
-   * BADGE
+   * ==========================================================
+   * CONTADOR DE NÃO LIDAS
+   * ==========================================================
    */
+
   badge: {
     minWidth: 22,
-
     height: 22,
 
     borderRadius: 11,
 
-    justifyContent: 'center',
-
     alignItems: 'center',
+    justifyContent: 'center',
 
     paddingHorizontal: 6,
 
@@ -180,21 +248,24 @@ export default StyleSheet.create({
   },
 
   badgeText: {
-    color: '#ffffff',
+    color: '#141414',
 
     fontSize: 12,
 
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
+
   /*
+   * ==========================================================
    * LISTA VAZIA
+   * ==========================================================
    */
+
   emptyContainer: {
     flex: 1,
 
     alignItems: 'center',
-
     justifyContent: 'center',
 
     paddingHorizontal: 30,
@@ -205,6 +276,8 @@ export default StyleSheet.create({
 
     fontWeight: '700',
 
+    color: '#F5F5F5',
+
     textAlign: 'center',
   },
 
@@ -212,6 +285,10 @@ export default StyleSheet.create({
     marginTop: 8,
 
     fontSize: 14,
+
+    lineHeight: 20,
+
+    color: '#AEB8BD',
 
     textAlign: 'center',
   },
